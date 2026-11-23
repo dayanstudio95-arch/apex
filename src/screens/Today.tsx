@@ -1,12 +1,11 @@
-import { Clock, List, Play, Quote, Share, ShieldCheck, Shield, SquarePlus, Trophy, TriangleAlert, BadgeCheck, Flame, Check } from 'lucide-react'
-import { useData } from '../store'
+import { Clock, List, Play, Quote, Share, ShieldCheck, Shield, SquarePlus, Trophy, TriangleAlert, BadgeCheck, Flame, Check, Sparkles, X } from 'lucide-react'
+import { commit, useData } from '../store'
 import { nav, useUI } from '../uiState'
-import { catalog } from '../engine/catalog'
 import { activeProgram, isDeloadWeek, realPRs, streakEntries, totalXPOf } from '../engine/finisher'
-import { HistoryIndex, sessionDuration, sessionVolume } from '../engine/history'
+import { sessionDuration, sessionVolume } from '../engine/history'
 import { computeStreak, levelInfo, levelProgress, levelTitle, weekProgress } from '../engine/motivation'
 import { nextTemplate } from '../engine/program'
-import { SessionBuilder, slotInput } from '../engine/session'
+import { makeBuilder, templateSlots } from '../planning'
 import { fmtDayMonth, fmtFullDate, fmtGrouped, fmtKg, fmtMinutes, fmtVolume, fmtWeight, ltr, plus, startOfWeek, WEEKDAY_LETTERS } from '../engine/format'
 import { greeting, todayLine } from '../engine/coach'
 import { prKindHe } from '../engine/types'
@@ -36,10 +35,12 @@ export default function Today() {
   const template = program ? nextTemplate(program) : undefined
   const location = data.locations.find((l) => l.id === profile.lastLocationID) ?? data.locations[0]
   const preview = template
-    ? new SessionBuilder(catalog(), new HistoryIndex(data.sessions)).build(
-      template.slots.slice().sort((a, b) => a.order - b.order).map((s) => slotInput(s, location?.id)),
+    ? makeBuilder(data, location).build(templateSlots(template, location?.id),
       new Set(location?.equipment ?? []), new Set(profile.limitations), profile.preferredMinutes, deload)
     : undefined
+  const NEWS = 'split-builder-1'
+  const showNews = !(profile.seenNews ?? []).includes(NEWS) && !program?.design
+  const dismissNews = () => { profile.seenNews = [...(profile.seenNews ?? []), NEWS]; commit() }
 
   const prs = realPRs(data.records).slice(0, 3)
   const last = done[0]
@@ -64,6 +65,21 @@ export default function Today() {
           <span className="muted" style={{ fontSize: 14 }}>
             ב-Safari לוחצים על <Share size={14} style={{ verticalAlign: -2 }} /> שיתוף, ואז על <b>הוספה למסך הבית</b>. מאז APEX נפתחת ממסך הבית, במסך מלא, וגם בלי אינטרנט.
           </span>
+        </div>
+      )}
+
+      {showNews && (
+        <div className="card hl" style={{ gap: 10 }}>
+          <div className="row">
+            <Sparkles size={18} color="var(--lime)" />
+            <b className="grow">חדש: תוכנית לפי אזורי גוף</b>
+            <button aria-label="סגירה" onClick={dismissNews}><X size={18} color="var(--text3)" /></button>
+          </div>
+          <span className="muted" style={{ fontSize: 14 }}>
+            פול באדי, A-B או A-B-C, עם מספר תרגילים לכל אזור. אפשר גם לסמן ⭐ תרגילים מועדפים, לקבוע זמני מנוחה,
+            ולהוסיף את חדר הכושר בבניין (משקולות עד 24 ק״ג ומולטי טריינר) ב״מיקומים וציוד״.
+          </span>
+          <button className="btn primary small" onClick={() => { dismissNews(); nav.tab('profile'); nav.push({ name: 'program', params: { build: '1' } }) }}>לבניית התוכנית</button>
         </div>
       )}
 

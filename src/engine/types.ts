@@ -5,6 +5,8 @@ export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 export type Equipment =
   | 'barbell' | 'dumbbell' | 'kettlebell' | 'cable' | 'machine'
   | 'bench' | 'pullupBar' | 'bands' | 'ezBar' | 'rack'
+  // תחנות של מולטי טריינר ביתי (במקום "כבלים" ו"מכונות" של חדר כושר מלא)
+  | 'highPulley' | 'lowPulley' | 'chestPress' | 'pecDeck' | 'legExtension' | 'legCurl' | 'treadmill'
 export type MovementPattern =
   | 'horizontalPush' | 'verticalPush' | 'horizontalPull' | 'verticalPull'
   | 'squat' | 'hinge' | 'lunge'
@@ -14,7 +16,9 @@ export type Muscle =
   | 'abs' | 'abductors' | 'adductors' | 'biceps' | 'calves' | 'chest' | 'forearms' | 'glutes'
   | 'hamstrings' | 'lats' | 'lowerBack' | 'midBack' | 'neck' | 'quads' | 'shoulders' | 'traps' | 'triceps'
 export type BodyArea = 'shoulder' | 'elbow' | 'wrist' | 'lowerBack' | 'knee' | 'hip'
-export type SplitType = 'fullBody' | 'upperLower' | 'pushPullLegs'
+export type SplitType = 'fullBody' | 'upperLower' | 'pushPullLegs' | 'ab' | 'abc'
+/** אזורי גוף, לבניית תוכנית ולסידור התרגילים */
+export type BodyPart = 'chest' | 'back' | 'shoulders' | 'triceps' | 'biceps' | 'legs' | 'abs' | 'cardio'
 export type SetKind = 'warmup' | 'work'
 export type PRKind = 'maxWeight' | 'e1rm' | 'maxReps' | 'sessionVolume'
 export type PhotoAngle = 'front' | 'side' | 'back'
@@ -23,6 +27,11 @@ export type Sex = 'male' | 'female'
 export const GOALS: Goal[] = ['muscle', 'fatLoss', 'fitness', 'strength']
 export const LEVELS: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced']
 export const EQUIPMENT: Equipment[] = ['barbell', 'dumbbell', 'kettlebell', 'cable', 'machine', 'bench', 'pullupBar', 'bands', 'ezBar', 'rack']
+/** ציוד חופשי ומכונות של חדר כושר מלא */
+export const BASIC_EQUIPMENT: Equipment[] = ['dumbbell', 'ezBar', 'barbell', 'bench', 'bands', 'pullupBar', 'kettlebell', 'rack', 'cable', 'machine']
+/** התחנות של מולטי טריינר ביתי */
+export const STATIONS: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl', 'treadmill']
+export const MULTI_TRAINER: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl']
 export const PATTERNS: MovementPattern[] = [
   'horizontalPush', 'verticalPush', 'horizontalPull', 'verticalPull', 'squat', 'hinge', 'lunge',
   'quadIsolation', 'hamstringIsolation', 'chestIsolation', 'lateralDelt', 'rearDelt', 'biceps',
@@ -30,6 +39,7 @@ export const PATTERNS: MovementPattern[] = [
 ]
 export const BODY_AREAS: BodyArea[] = ['shoulder', 'elbow', 'wrist', 'lowerBack', 'knee', 'hip']
 export const SPLITS: SplitType[] = ['fullBody', 'upperLower', 'pushPullLegs']
+export const BODY_PARTS: BodyPart[] = ['chest', 'back', 'shoulders', 'triceps', 'biceps', 'legs', 'abs', 'cardio']
 
 export const goalHe: Record<Goal, string> = {
   muscle: 'בניית מסת שריר', fatLoss: 'ירידה באחוזי שומן', fitness: 'כושר כללי וסיבולת', strength: 'כוח',
@@ -49,8 +59,10 @@ export const levelSub: Record<ExperienceLevel, string> = {
   advanced: 'שנתיים ומעלה עם תוכניות מסודרות',
 }
 export const equipmentHe: Record<Equipment, string> = {
-  barbell: 'מוט', dumbbell: 'משקולות יד', kettlebell: 'קטלבל', cable: 'כבלים', machine: 'מכונות',
-  bench: 'ספסל', pullupBar: 'מתקן מתח', bands: 'גומיות', ezBar: 'מוט EZ', rack: 'מתקן סקוואט / מקבילים',
+  barbell: 'מוט ישר', dumbbell: 'משקולות יד', kettlebell: 'קטלבל', cable: 'מכונת כבלים מלאה', machine: 'מכונות של חדר כושר',
+  bench: 'ספסל מתכוונן', pullupBar: 'מתקן מתח', bands: 'גומיות', ezBar: 'מוט W', rack: 'מתקן סקוואט / מקבילים',
+  highPulley: 'פולי עליון', lowPulley: 'פולי תחתון (חתירה)', chestPress: 'לחיצת חזה במכונה', pecDeck: 'פרפר במכונה',
+  legExtension: 'פשיטת ברכיים', legCurl: 'כפיפת ברכיים', treadmill: 'הליכון',
 }
 export const patternHe: Record<MovementPattern, string> = {
   horizontalPush: 'דחיקה אופקית', verticalPush: 'דחיקה אנכית', horizontalPull: 'משיכה אופקית',
@@ -69,8 +81,17 @@ export const bodyAreaHe: Record<BodyArea, string> = {
   shoulder: 'כתף', elbow: 'מרפק', wrist: 'שורש כף יד', lowerBack: 'גב תחתון', knee: 'ברך', hip: 'ירך / אגן',
 }
 export const splitHe: Record<SplitType, string> = {
-  fullBody: 'גוף מלא', upperLower: 'עליון / תחתון', pushPullLegs: 'דחיקה / משיכה / רגליים',
+  fullBody: 'גוף מלא', upperLower: 'עליון / תחתון', pushPullLegs: 'דחיקה / משיכה / רגליים', ab: 'A-B', abc: 'A-B-C',
 }
+export const partHe: Record<BodyPart, string> = {
+  chest: 'חזה', back: 'גב', shoulders: 'כתפיים', triceps: 'יד אחורית', biceps: 'יד קדמית', legs: 'רגליים', abs: 'בטן', cardio: 'אירובי',
+}
+const PATTERN_PART: Record<MovementPattern, BodyPart> = {
+  horizontalPush: 'chest', chestIsolation: 'chest', verticalPush: 'shoulders', lateralDelt: 'shoulders', rearDelt: 'shoulders',
+  horizontalPull: 'back', verticalPull: 'back', biceps: 'biceps', triceps: 'triceps', squat: 'legs', hinge: 'legs', lunge: 'legs',
+  quadIsolation: 'legs', hamstringIsolation: 'legs', calves: 'legs', core: 'abs', conditioning: 'cardio',
+}
+export const partOfPattern = (p: MovementPattern): BodyPart => PATTERN_PART[p] ?? 'cardio'
 export const prKindHe: Record<PRKind, string> = {
   maxWeight: 'משקל שיא', e1rm: '1RM משוער', maxReps: 'שיא חזרות', sessionVolume: 'נפח שיא',
 }
@@ -104,6 +125,26 @@ export interface Profile {
   onboardingDone: boolean
   lastLocationID?: string
   createdAt: string
+  /** זמני מנוחה. בלי ערך: המאמן קובע לפי סוג התרגיל */
+  rest?: RestSettings
+  /** הודעות "מה חדש" שכבר נסגרו */
+  seenNews?: string[]
+}
+
+export interface RestSettings {
+  /** auto: לפי סוג התרגיל · fixed: הזמן שהוגדר בין סטים */
+  mode: 'auto' | 'fixed'
+  sets: number
+  exercises: number
+  /** exerciseID -> שניות בין סטים, לתרגיל מסוים */
+  byExercise: Record<string, number>
+}
+
+/** מגבלות ציוד במיקום: משקולות עד X, ערימת משקולות בצעדים של Y */
+export interface LocationLimits {
+  dumbbellMax?: number
+  stackStep?: number
+  stackMax?: number
 }
 
 export interface LocationProfile {
@@ -112,6 +153,7 @@ export interface LocationProfile {
   icon: string
   equipment: Equipment[]
   sortOrder: number
+  limits?: LocationLimits
 }
 
 export interface TemplateSlot {
@@ -127,6 +169,12 @@ export interface TemplateSlot {
   restSeconds: number
   /** locationID -> exerciseID */
   exerciseByLocation: Record<string, string>
+  /** אזור הגוף (בתוכניות לפי אזורים) */
+  part?: BodyPart
+  /** מפתח ב-FOCUS: איזו וריאציה מועדפת (למשל לחיצה בשיפוע) */
+  focus?: string
+  /** תוספת גמישה (בטן / פינישר): נכנסת כשיש זמן, ואפשר לוותר עליה לפני האימון */
+  flex?: boolean
 }
 
 export interface WorkoutTemplate {
@@ -146,6 +194,20 @@ export interface Program {
   isActive: boolean
   createdAt: string
   templates: WorkoutTemplate[]
+  /** איך נבנתה התוכנית (בתוכניות לפי אזורי גוף), כדי לפתוח שוב את הבונה */
+  design?: SplitDesign
+}
+
+export type SplitKind = 'fullBody' | 'ab' | 'abc'
+export interface PartPlan { part: BodyPart; count: number }
+export interface DayDesign { parts: PartPlan[] }
+export interface SplitDesign {
+  kind: SplitKind
+  days: DayDesign[]
+  /** כמה תרגילי בטן להוסיף בסוף כל אימון כשיש זמן (0 = בלי) */
+  absFlex: number
+  /** פינישר אירובי בסוף כל אימון כשיש זמן */
+  finisher: boolean
 }
 
 export interface SetLog {
@@ -259,6 +321,8 @@ export interface AppData {
   achievements: UnlockedAchievement[]
   xpEvents: XPEvent[]
   reminders: ReminderRule[]
+  /** תרגילים מועדפים: המאמן בוחר אותם קודם */
+  favorites?: string[]
 }
 
 export const emptyData = (): AppData => ({

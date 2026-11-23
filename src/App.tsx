@@ -13,7 +13,7 @@ import PreWorkout from './screens/PreWorkout'
 import ActiveWorkout from './screens/ActiveWorkout'
 import { HistoryScreen, SessionDetail } from './screens/History'
 import ProgressScreen from './screens/Progress'
-import { ProfileScreen, AchievementsScreen, ProgramEditor, LocationsSettings, RemindersSettings, PersonalSettings, BackupScreen } from './screens/Profile'
+import { ProfileScreen, AchievementsScreen, ProgramEditor, LocationsSettings, RemindersSettings, PersonalSettings, BackupScreen, RestSettingsScreen, FavoritesScreen } from './screens/Profile'
 
 const TABS: [Tab, string, typeof Flame][] = [
   ['today', 'היום', Flame], ['history', 'היסטוריה', Calendar], ['progress', 'התקדמות', ChartLine], ['profile', 'פרופיל', CircleUser],
@@ -55,7 +55,9 @@ export default function App() {
     switch (route.name) {
       case 'session': page = <SessionDetail id={p.id} />; break
       case 'achievements': page = <AchievementsScreen />; break
-      case 'program': page = <ProgramEditor />; break
+      case 'program': page = <ProgramEditor openBuilder={p.build === '1'} />; break
+      case 'rest': page = <RestSettingsScreen />; break
+      case 'favorites': page = <FavoritesScreen />; break
       case 'locations': page = <LocationsSettings />; break
       case 'reminders': page = <RemindersSettings />; break
       case 'personal': page = <PersonalSettings />; break

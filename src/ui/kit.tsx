@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Check, ChevronLeft, ChevronRight, Circle, CircleCheck, Dumbbell, Minus, Plus, Zap } from 'lucide-react'
 import type { Exercise } from '../engine/catalog'
 import { imageURL } from '../engine/catalog'
-import { fmtWeight, WEEKDAY_LETTERS } from '../engine/format'
+import { fmtDuration, fmtWeight, WEEKDAY_LETTERS } from '../engine/format'
 
 /** חץ "קדימה" בעברית מצביע שמאלה */
 export const ChevronForward = ChevronLeft
@@ -156,6 +156,21 @@ export function NumberField({ title, value, onChange, unit, step = 1, min = 0, m
       <span className="num" style={{ minWidth: 86, textAlign: 'center', fontSize: 24 }}>
         {fmtWeight(value)} <small className="caption">{unit}</small>
       </span>
+      <RepeatButton className="icon-btn" label="יותר" onStep={() => onChange(clamp(value + step))}><Plus size={16} color="var(--lime)" strokeWidth={3} /></RepeatButton>
+    </div>
+  )
+}
+
+/** בחירת זמן בשניות, בקפיצות של 15 */
+export function SecondsStepper({ label, value, onChange, min = 15, max = 600, step = 15 }: {
+  label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, v))
+  return (
+    <div className="card tight" style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <b className="grow">{label}</b>
+      <RepeatButton className="icon-btn" label="פחות" onStep={() => onChange(clamp(value - step))}><Minus size={16} color="var(--lime)" strokeWidth={3} /></RepeatButton>
+      <span className="num" dir="ltr" style={{ minWidth: 78, textAlign: 'center', fontSize: 24 }}>{fmtDuration(value)}</span>
       <RepeatButton className="icon-btn" label="יותר" onStep={() => onChange(clamp(value + step))}><Plus size={16} color="var(--lime)" strokeWidth={3} /></RepeatButton>
     </div>
   )

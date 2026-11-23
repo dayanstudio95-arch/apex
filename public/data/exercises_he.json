@@ -497,6 +497,44 @@
     "defaultRestSeconds": 150
   },
   {
+    "id": "Decline_Dumbbell_Bench_Press",
+    "nameHe": "לחיצת חזה בשיפוע שלילי עם משקולות",
+    "nameEn": "Decline Dumbbell Bench Press",
+    "pattern": "horizontalPush",
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "mechanic": "compound",
+    "level": "beginner",
+    "instructionsHe": [
+      "לקבע את הרגליים בתופסנים של ספסל בשיפוע שלילי ולשכב לאחור עם משקולת בכל יד",
+      "להתחיל עם ידיים ישרות מעל החזה התחתון, כפות הידיים פונות קדימה",
+      "להוריד את המשקולות בשליטה לצדי החזה, מרפקים בזווית של כ-45° מהגוף",
+      "לדחוף חזרה למעלה עד יישור הידיים ולקרב מעט את המשקולות בסוף התנועה"
+    ],
+    "images": [
+      "Decline_Dumbbell_Bench_Press_0.jpg",
+      "Decline_Dumbbell_Bench_Press_1.jpg"
+    ],
+    "increment": 2,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "shoulder"
+    ],
+    "priority": 5,
+    "defaultRestSeconds": 120
+  },
+  {
     "id": "Leverage_Incline_Chest_Press",
     "nameHe": "מכונת לחיצת חזה בשיפוע",
     "nameEn": "Incline Machine Chest Press",
@@ -3922,6 +3960,41 @@
     "defaultRestSeconds": 60
   },
   {
+    "id": "Decline_Dumbbell_Flyes",
+    "nameHe": "פרפר בשיפוע שלילי עם משקולות",
+    "nameEn": "Decline Dumbbell Flyes",
+    "pattern": "chestIsolation",
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לשכב על ספסל בשיפוע שלילי עם רגליים מקובעות, משקולות מעל החזה וכפות ידיים פונות זו לזו",
+      "לשמור על כיפוף קל וקבוע במרפקים לאורך כל התנועה",
+      "לפתוח את הידיים לצדדים בקשת רחבה עד מתיחה נעימה בחזה",
+      "לסגור חזרה בקשת עד מעל החזה ולכווץ את שרירי החזה"
+    ],
+    "images": [
+      "Decline_Dumbbell_Flyes_0.jpg",
+      "Decline_Dumbbell_Flyes_1.jpg"
+    ],
+    "increment": 2,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "shoulder"
+    ],
+    "priority": 4,
+    "defaultRestSeconds": 75
+  },
+  {
     "id": "Side_Lateral_Raise",
     "nameHe": "הרחקת כתפיים עם משקולות",
     "nameEn": "Dumbbell Lateral Raise",
@@ -4096,6 +4169,40 @@
     ],
     "priority": 5,
     "defaultRestSeconds": 90
+  },
+  {
+    "id": "Front_Dumbbell_Raise",
+    "nameHe": "הרמה קדמית עם משקולות",
+    "nameEn": "Front Dumbbell Raise",
+    "pattern": "lateralDelt",
+    "equipment": [
+      "dumbbell"
+    ],
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לעמוד זקוף עם משקולת בכל יד מול הירכיים, כפות הידיים פונות לגוף",
+      "להרים קדימה עם מרפק מעט כפוף עד גובה הכתפיים, יד אחת או שתיהן יחד",
+      "לעצור לרגע למעלה בלי להטות את הגוף לאחור",
+      "להוריד לאט ובשליטה למצב ההתחלה"
+    ],
+    "images": [
+      "Front_Dumbbell_Raise_0.jpg",
+      "Front_Dumbbell_Raise_1.jpg"
+    ],
+    "increment": 2,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "shoulder"
+    ],
+    "priority": 5,
+    "defaultRestSeconds": 60
   },
   {
     "id": "One-Arm_Incline_Lateral_Raise",
@@ -4404,6 +4511,43 @@
     "defaultRestSeconds": 60
   },
   {
+    "id": "Cable_Rope_Rear-Delt_Rows",
+    "nameHe": "חתירה לפנים עם חבל (כתף אחורית)",
+    "nameEn": "Cable Rope Rear-Delt Row",
+    "pattern": "rearDelt",
+    "equipment": [
+      "cable"
+    ],
+    "primaryMuscles": [
+      "shoulders"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "midBack"
+    ],
+    "mechanic": "compound",
+    "level": "beginner",
+    "instructionsHe": [
+      "לחבר חבל לפולי ולאחוז בקצוות שלו, כפות הידיים פונות זו לזו",
+      "למשוך את החבל לכיוון הפנים כשהמרפקים גבוהים ופתוחים לצדדים",
+      "לפתוח את הידיים בסוף התנועה ולכווץ את הכתף האחורית והשכמות",
+      "לחזור לאט עד יישור הידיים"
+    ],
+    "images": [
+      "Cable_Rope_Rear-Delt_Rows_0.jpg",
+      "Cable_Rope_Rear-Delt_Rows_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "shoulder"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
     "id": "External_Rotation_with_Band",
     "nameHe": "סיבוב חיצוני לכתף עם גומייה",
     "nameEn": "Band External Rotation",
@@ -4510,7 +4654,7 @@
   },
   {
     "id": "EZ-Bar_Curl",
-    "nameHe": "כפיפת מרפקים עם מוט EZ",
+    "nameHe": "כפיפת מרפקים עם מוט W",
     "nameEn": "EZ-Bar Curl",
     "pattern": "biceps",
     "equipment": [
@@ -4523,7 +4667,7 @@
     "mechanic": "isolation",
     "level": "beginner",
     "instructionsHe": [
-      "לאחוז במוט ה-EZ באחיזה תחתונה על החלק המשופע",
+      "לאחוז במוט ה-W באחיזה תחתונה על החלק המשופע",
       "לעמוד זקוף כשהמרפקים צמודים לגוף",
       "להרים את המוט בכיווץ היד הקדמית עד גובה הכתפיים",
       "להוריד לאט עד יישור הידיים"
@@ -4593,7 +4737,7 @@
     "level": "beginner",
     "instructionsHe": [
       "לשבת בכיסא כומר (או מעל גב ספסל משופע) כשהזרועות העליונות צמודות לרפידה",
-      "לאחוז במוט ה-EZ באחיזה תחתונה ברוחב הכתפיים",
+      "לאחוז במוט ה-W באחיזה תחתונה ברוחב הכתפיים",
       "להרים את המוט עד כיווץ מלא בלי להרים את המרפקים מהרפידה",
       "להוריד לאט עד כמעט יישור, בלי לנעול בכוח בתחתית"
     ],
@@ -4754,6 +4898,76 @@
     "defaultRestSeconds": 60
   },
   {
+    "id": "One_Arm_Dumbbell_Preacher_Curl",
+    "nameHe": "כפיפת כומר ביד אחת על ספסל משופע",
+    "nameEn": "One-Arm Dumbbell Preacher Curl",
+    "pattern": "biceps",
+    "equipment": [
+      "dumbbell",
+      "bench"
+    ],
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "להניח את הזרוע על משענת של ספסל משופע, כשבית השחי צמוד לקצה המשענת",
+      "לאחוז משקולת כשכף היד פונה למעלה והיד כמעט ישרה",
+      "לכופף את המרפק ולהרים את המשקולת לכיוון הכתף",
+      "להוריד לאט עד שהיד כמעט ישרה, בלי לנעול את המרפק"
+    ],
+    "images": [
+      "One_Arm_Dumbbell_Preacher_Curl_0.jpg",
+      "One_Arm_Dumbbell_Preacher_Curl_1.jpg"
+    ],
+    "increment": 2,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
+    "id": "Spider_Curl",
+    "nameHe": "כפיפת עכביש עם מוט W",
+    "nameEn": "Spider Curl",
+    "pattern": "biceps",
+    "equipment": [
+      "ezBar",
+      "bench"
+    ],
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לשכב עם הבטן על ספסל בשיפוע חיובי, הידיים תלויות ישר למטה ואוחזות במוט W",
+      "לכופף את המרפקים ולהרים את המוט כשהזרועות נשארות ניצבות לרצפה",
+      "לכווץ את היד הקדמית למעלה לשנייה",
+      "להוריד לאט עד יישור מלא של הידיים"
+    ],
+    "images": [
+      "Spider_Curl_0.jpg",
+      "Spider_Curl_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
     "id": "Cable_Hammer_Curls_-_Rope_Attachment",
     "nameHe": "כפיפת פטישים בכבל עם חבל",
     "nameEn": "Cable Rope Hammer Curl",
@@ -4776,6 +4990,42 @@
     "images": [
       "Cable_Hammer_Curls_-_Rope_Attachment_0.jpg",
       "Cable_Hammer_Curls_-_Rope_Attachment_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
+    "id": "Close-Grip_EZ_Bar_Curl",
+    "nameHe": "כפיפת מרפקים באחיזה צרה עם מוט W",
+    "nameEn": "Close-Grip EZ-Bar Curl",
+    "pattern": "biceps",
+    "equipment": [
+      "ezBar"
+    ],
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לעמוד זקוף ולאחוז במוט W בחלק הפנימי שלו, כפות הידיים פונות קדימה",
+      "להצמיד את המרפקים לצדי הגוף",
+      "לכופף את המרפקים ולהרים את המוט עד גובה החזה, בלי להניע את הגוף",
+      "להוריד לאט ובשליטה עד יישור הידיים"
+    ],
+    "images": [
+      "Close-Grip_EZ_Bar_Curl_0.jpg",
+      "Close-Grip_EZ_Bar_Curl_1.jpg"
     ],
     "increment": 2.5,
     "isBodyweight": false,
@@ -4972,7 +5222,7 @@
   },
   {
     "id": "EZ-Bar_Skullcrusher",
-    "nameHe": "לחיצה צרפתית עם מוט EZ",
+    "nameHe": "לחיצה צרפתית עם מוט W",
     "nameEn": "EZ-Bar Skull Crusher",
     "pattern": "triceps",
     "equipment": [
@@ -4988,7 +5238,7 @@
     "mechanic": "isolation",
     "level": "beginner",
     "instructionsHe": [
-      "לשכב על ספסל שטוח ולהחזיק את מוט ה-EZ מעל החזה בידיים ישרות",
+      "לשכב על ספסל שטוח ולהחזיק את מוט ה-W מעל החזה בידיים ישרות",
       "להטות מעט את הזרועות לאחור לכיוון הראש ולקבע את המרפקים",
       "לכופף רק את המרפקים ולהוריד את המוט לכיוון המצח או מעט מאחורי הראש",
       "ליישר חזרה בכוח היד האחורית בלי להזיז את הזרועות"
@@ -5078,6 +5328,45 @@
     ],
     "priority": 8,
     "defaultRestSeconds": 120
+  },
+  {
+    "id": "Close-Grip_EZ-Bar_Press",
+    "nameHe": "לחיצה צרה עם מוט W",
+    "nameEn": "Close-Grip EZ-Bar Press",
+    "pattern": "triceps",
+    "equipment": [
+      "ezBar",
+      "bench"
+    ],
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "shoulders"
+    ],
+    "mechanic": "compound",
+    "level": "beginner",
+    "instructionsHe": [
+      "לשכב על ספסל שטוח ולאחוז במוט W בחלק הפנימי שלו, ברוחב הכתפיים או מעט פחות",
+      "להתחיל עם ידיים ישרות מעל החזה",
+      "להוריד את המוט לאט לחזה התחתון כשהמרפקים צמודים לגוף",
+      "לדחוף חזרה למעלה עד יישור הידיים, בכוח היד האחורית"
+    ],
+    "images": [
+      "Close-Grip_EZ-Bar_Press_0.jpg",
+      "Close-Grip_EZ-Bar_Press_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow",
+      "shoulder"
+    ],
+    "priority": 7,
+    "defaultRestSeconds": 90
   },
   {
     "id": "Triceps_Overhead_Extension_with_Rope",
@@ -5226,6 +5515,78 @@
     "defaultRestSeconds": 90
   },
   {
+    "id": "Standing_Overhead_Barbell_Triceps_Extension",
+    "nameHe": "פשיטת מרפקים מעל הראש עם מוט W",
+    "nameEn": "Overhead EZ-Bar Triceps Extension",
+    "pattern": "triceps",
+    "equipment": [
+      "ezBar"
+    ],
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "shoulders"
+    ],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לעמוד זקוף ולאחוז במוט W מעל הראש באחיזה צרה, הידיים ישרות",
+      "להוריד את המוט מאחורי הראש בכיפוף המרפקים, כשהמרפקים מצביעים קדימה וצמודים לראש",
+      "לפשוט את המרפקים ולהחזיר את המוט למעלה",
+      "לשמור על בטן מכווצת וגב ישר לאורך כל התנועה"
+    ],
+    "images": [
+      "Standing_Overhead_Barbell_Triceps_Extension_0.jpg",
+      "Standing_Overhead_Barbell_Triceps_Extension_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow",
+      "shoulder"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
+    "id": "Reverse_Grip_Triceps_Pushdown",
+    "nameHe": "פשיטת מרפקים בפולי עליון באחיזה הפוכה",
+    "nameEn": "Reverse Grip Triceps Pushdown",
+    "pattern": "triceps",
+    "equipment": [
+      "cable"
+    ],
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לעמוד מול הפולי העליון ולאחוז במוט באחיזה הפוכה, כפות הידיים פונות למעלה",
+      "להצמיד את המרפקים לצדי הגוף ולהשאיר אותם במקום לאורך כל התנועה",
+      "לפשוט את המרפקים ולדחוף את המוט למטה עד יישור מלא",
+      "לחזור לאט עד שהאמות מעט מעל קו המקביל לרצפה"
+    ],
+    "images": [
+      "Reverse_Grip_Triceps_Pushdown_0.jpg",
+      "Reverse_Grip_Triceps_Pushdown_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow",
+      "wrist"
+    ],
+    "priority": 6,
+    "defaultRestSeconds": 60
+  },
+  {
     "id": "Bench_Dips",
     "nameHe": "מקבילים על ספסל",
     "nameEn": "Bench Dip",
@@ -5333,6 +5694,40 @@
     ],
     "priority": 5,
     "defaultRestSeconds": 60
+  },
+  {
+    "id": "Cable_One_Arm_Tricep_Extension",
+    "nameHe": "פשיטת מרפק ביד אחת בפולי עליון",
+    "nameEn": "One-Arm Cable Triceps Extension",
+    "pattern": "triceps",
+    "equipment": [
+      "cable"
+    ],
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לחבר ידית אחת לפולי העליון ולאחוז בה באחיזה הפוכה או ניטרלית",
+      "להצמיד את המרפק לצד הגוף",
+      "לפשוט את המרפק עד יישור מלא ולכווץ את היד האחורית",
+      "לחזור לאט, ולהחליף יד בסוף הסט"
+    ],
+    "images": [
+      "Cable_One_Arm_Tricep_Extension_0.jpg",
+      "Cable_One_Arm_Tricep_Extension_1.jpg"
+    ],
+    "increment": 2.5,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "elbow"
+    ],
+    "priority": 5,
+    "defaultRestSeconds": 45
   },
   {
     "id": "Body-Up",
@@ -5828,6 +6223,38 @@
     "defaultRestSeconds": 45
   },
   {
+    "id": "Decline_Crunch",
+    "nameHe": "כפיפות בטן בשיפוע שלילי",
+    "nameEn": "Decline Crunch",
+    "pattern": "core",
+    "equipment": [
+      "bench"
+    ],
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "intermediate",
+    "instructionsHe": [
+      "לקבע את הרגליים בתופסנים של ספסל בשיפוע שלילי ולשכב לאחור",
+      "הידיים על החזה או ליד הרקות, בלי למשוך את הראש",
+      "לכווץ את הבטן ולהרים את הכתפיים והגב העליון מהספסל",
+      "לרדת לאט ובשליטה, בלי להניח את הגב לגמרי בין החזרות"
+    ],
+    "images": [
+      "Decline_Crunch_0.jpg",
+      "Decline_Crunch_1.jpg"
+    ],
+    "increment": 0,
+    "isBodyweight": true,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [],
+    "priority": 7,
+    "defaultRestSeconds": 45
+  },
+  {
     "id": "Dead_Bug",
     "nameHe": "דד באג",
     "nameEn": "Dead Bug",
@@ -5946,6 +6373,38 @@
     "images": [
       "Knee_Hip_Raise_On_Parallel_Bars_0.jpg",
       "Knee_Hip_Raise_On_Parallel_Bars_1.jpg"
+    ],
+    "increment": 0,
+    "isBodyweight": true,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [],
+    "priority": 6,
+    "defaultRestSeconds": 45
+  },
+  {
+    "id": "Decline_Reverse_Crunch",
+    "nameHe": "כפיפות בטן הפוכות בשיפוע שלילי",
+    "nameEn": "Decline Reverse Crunch",
+    "pattern": "core",
+    "equipment": [
+      "bench"
+    ],
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לשכב על ספסל בשיפוע שלילי כשהראש בצד הגבוה, ולאחוז בקצה הספסל מאחורי הראש",
+      "להרים את הרגליים כשהברכיים מעט כפופות",
+      "לגלגל את האגן למעלה ולקרב את הברכיים לחזה בכוח הבטן",
+      "להוריד את הרגליים לאט ובשליטה, בלי לגעת בספסל"
+    ],
+    "images": [
+      "Decline_Reverse_Crunch_0.jpg",
+      "Decline_Reverse_Crunch_1.jpg"
     ],
     "increment": 0,
     "isBodyweight": true,
@@ -6212,6 +6671,40 @@
     "defaultRestSeconds": 45
   },
   {
+    "id": "Dumbbell_Side_Bend",
+    "nameHe": "הטיות צד עם משקולת",
+    "nameEn": "Dumbbell Side Bend",
+    "pattern": "core",
+    "equipment": [
+      "dumbbell"
+    ],
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "level": "beginner",
+    "instructionsHe": [
+      "לעמוד זקוף עם משקולת ביד אחת, היד השנייה על המותן",
+      "להטות את הגוף לאט לצד של המשקולת, בלי להתכופף קדימה",
+      "לחזור למעלה בכוח שרירי הבטן האלכסוניים של הצד השני",
+      "לסיים את כל החזרות בצד אחד ואז להחליף"
+    ],
+    "images": [
+      "Dumbbell_Side_Bend_0.jpg",
+      "Dumbbell_Side_Bend_1.jpg"
+    ],
+    "increment": 2,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "lowerBack"
+    ],
+    "priority": 4,
+    "defaultRestSeconds": 45
+  },
+  {
     "id": "One-Arm_Kettlebell_Swings",
     "nameHe": "סווינג עם קטלבל",
     "nameEn": "Kettlebell Swing",
@@ -6366,6 +6859,43 @@
     ],
     "priority": 7,
     "defaultRestSeconds": 45
+  },
+  {
+    "id": "Jogging_Treadmill",
+    "nameHe": "ריצה על הליכון (אינטרוולים)",
+    "nameEn": "Treadmill Intervals",
+    "pattern": "conditioning",
+    "equipment": [
+      "machine"
+    ],
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "mechanic": "compound",
+    "level": "beginner",
+    "instructionsHe": [
+      "להתחמם 2–3 דקות בהליכה מהירה לפני האינטרוול הראשון",
+      "בכל סט להעלות מהירות לריצה מאומצת למשך הזמן שנקבע",
+      "בזמן המנוחה להוריד להליכה רגועה בלי לרדת מההליכון",
+      "לשמור על גוף זקוף ומבט קדימה, בלי להישען על הידיות"
+    ],
+    "images": [
+      "Jogging_Treadmill_0.jpg",
+      "Jogging_Treadmill_1.jpg"
+    ],
+    "increment": 0,
+    "isBodyweight": false,
+    "progressionChain": null,
+    "progressionOrder": null,
+    "loadsAreas": [
+      "knee"
+    ],
+    "priority": 7,
+    "defaultRestSeconds": 60
   },
   {
     "id": "Farmers_Walk",

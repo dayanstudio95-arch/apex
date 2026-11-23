@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Building, CalendarPlus, Check, CircleDashed, House, TreePine } from 'lucide-react'
-import type { BodyArea, Equipment, ExperienceLevel, Goal, Program, Sex } from '../engine/types'
-import { BODY_AREAS, EQUIPMENT, GOALS, LEVELS, bodyAreaHe, emptyData, equipmentHe, goalHe, goalSub, levelHe, levelSub, patternHe, recommendedSplit, splitHe, uid } from '../engine/types'
+import { Building, CalendarPlus, Check, CircleDashed, Dumbbell, House, TreePine } from 'lucide-react'
+import type { BodyArea, Equipment, ExperienceLevel, Goal, Program, Sex, SplitKind } from '../engine/types'
+import { BODY_AREAS, EQUIPMENT, GOALS, LEVELS, bodyAreaHe, emptyData, equipmentHe, goalHe, goalSub, levelHe, levelSub, partHe, partOfPattern, patternHe, recommendedSplit, splitHe, uid } from '../engine/types'
 import { generateProgram, materializeProgram } from '../engine/program'
+import { defaultDesign, focusLabel, generateFromDesign, kindHe } from '../engine/split'
+import { LOCATION_PRESETS, locationFromPreset } from '../engine/locations'
 import { ltr } from '../engine/format'
 import { getData, replaceData, commit } from '../store'
 import { downloadBlob, remindersICS } from '../backup'
@@ -16,6 +18,7 @@ interface Draft {
   weeklyGoal: number
   minutes: number
   gym: boolean
+  building: boolean
   home: boolean
   outside: boolean
   homeEquipment: Equipment[]
@@ -26,6 +29,7 @@ interface Draft {
   sex: Sex
   reminderDays: number[]
   reminderTime: string
+  split: SplitKind | 'coach'
 }
 
 const TOTAL = 8
@@ -33,7 +37,7 @@ const TOTAL = 8
 export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [d, setD] = useState<Draft>({
-    name: '', goals: ['muscle'], level: 'intermediate', weeklyGoal: 3, minutes: 60, gym: true, home: false, outside: false,
+    name: '', goals: ['muscle'], level: 'intermediate', weeklyGoal: 3, minutes: 60, gym: true, building: false, home: false, outside: false, split: 'coach',
     homeEquipment: ['dumbbell', 'bench'], limitations: [], weight: 80, height: 175, birthYear: 1995, sex: 'male',
     reminderDays: [], reminderTime: '18:00',
   })
@@ -41,7 +45,7 @@ export default function Onboarding() {
   const up = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }))
   const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
-  const canContinue = step === 1 ? d.goals.length > 0 : step === 4 ? d.gym || d.home || d.outside : true
+  const canContinue = step === 1 ? d.goals.length > 0 : step === 4 ? d.gym || d.building || d.home || d.outside : true
 
   const next = () => {
     if (step < TOTAL - 1) { setStep(step + 1); window.scrollTo(0, 0); return }
@@ -88,6 +92,12 @@ export default function Onboarding() {
           <BigStepper value={d.weeklyGoal} onChange={(v) => up({ weeklyGoal: v })} min={2} max={6} unit="אימונים בשבוע" />
           <b className="lime" style={{ fontSize: 15 }}>תוכנית מומלצת: {splitHe[recommendedSplit(d.weeklyGoal)]}</b>
         </div>
+        <b className="headline">סוג התוכנית</b>
+        <div className="chips">
+          <Chip title="המאמן יחליט" on={d.split === 'coach'} onClick={() => up({ split: 'coach' })} />
+          {(['fullBody', 'ab', 'abc'] as SplitKind[]).map((k) => <Chip key={k} title={kindHe[k]} on={d.split === k} onClick={() => up({ split: k })} />)}
+        </div>
+        <span className="caption">{d.split === 'coach' ? 'המאמן יבחר פיצול לפי מספר האימונים.' : 'לפי אזורי גוף. אחר כך אפשר לקבוע כמה תרגילים לכל אזור בכל אימון.'}</span>
         <b className="headline">אורך אימון רגיל</b>
         <div className="chips">{[30, 45, 60, 75].map((m) => <Chip key={m} title={`${m} דק׳`} on={d.minutes === m} onClick={() => up({ minutes: m })} />)}</div>
         <span className="caption">אפשר לשנות לפני כל אימון.</span>
@@ -96,6 +106,7 @@ export default function Onboarding() {
       {step === 4 && <>
         <Title t="איפה מתאמנים?" s="לפני כל אימון בוחרים מיקום, והתרגילים מותאמים לציוד שיש שם." />
         <SelectCard title="חדר כושר" subtitle="מוטות, מכונות, כבלים, כל הציוד" icon={Building} on={d.gym} onClick={() => up({ gym: !d.gym })} />
+        <SelectCard title="חדר כושר בבניין / מולטי טריינר" subtitle="משקולות, מוט W, ספסלים, הליכון ומכונה עם פולי עליון ותחתון" icon={Dumbbell} on={d.building} onClick={() => up({ building: !d.building })} />
         <SelectCard title="בבית" subtitle="משקולות, גומיות, מתח או מה שיש" icon={House} on={d.home} onClick={() => up({ home: !d.home })} />
         {d.home && (
           <div className="card tight">
@@ -148,6 +159,7 @@ function createEverything(d: Draft): Program {
   const data = getData().profile ? emptyData() : getData()
   const now = new Date()
   const locations = []
+  if (d.building) locations.push(locationFromPreset(LOCATION_PRESETS[0], locations.length))
   if (d.gym) locations.push({ id: uid(), name: 'חדר כושר', icon: 'gym', equipment: [...EQUIPMENT], sortOrder: locations.length })
   if (d.home) locations.push({ id: uid(), name: 'בית', icon: 'home', equipment: EQUIPMENT.filter((e) => d.homeEquipment.includes(e)), sortOrder: locations.length })
   if (d.outside) locations.push({ id: uid(), name: 'בחוץ', icon: 'outside', equipment: [] as Equipment[], sortOrder: locations.length })
@@ -162,7 +174,8 @@ function createEverything(d: Draft): Program {
     const [h, m] = d.reminderTime.split(':').map(Number)
     data.reminders = [{ weekdays: d.reminderDays, hour: h, minute: m }]
   }
-  const program = materializeProgram(generateProgram({ goals: new Set(d.goals), level: d.level, weeklyGoal: d.weeklyGoal }), now)
+  const input = { goals: new Set(d.goals), level: d.level, weeklyGoal: d.weeklyGoal }
+  const program = materializeProgram(d.split === 'coach' ? generateProgram(input) : generateFromDesign(defaultDesign(d.split, input.goals), input), now)
   data.programs = [program]
   replaceData(data)
   return program
@@ -224,7 +237,7 @@ function Building_({ program, draft }: { program: Program; draft: Draft }) {
           <b className="headline lime">{t.name}</b>
           {t.slots.map((s) => (
             <div key={s.id} className="row" style={{ fontSize: 15 }}>
-              <span className="grow">{patternHe[s.pattern]}</span>
+              <span className="grow">{s.part ? `${partHe[s.part ?? partOfPattern(s.pattern)]} · ` : ''}{focusLabel(s.focus) ?? patternHe[s.pattern]}{s.flex ? ' (אם יש זמן)' : ''}</span>
               <span className="num muted" style={{ fontSize: 15 }}>{ltr(`${s.sets}×${s.repMin}–${s.repMax}`)}</span>
             </div>
           ))}

@@ -1,19 +1,24 @@
-import { useRef, useState } from 'react'
-import { ArrowDownUp, Bell, CalendarPlus, Columns3, Download, Dumbbell, Flame, HardDrive, Info, ListChecks, MapPin, Plus, Settings2, Trash, Upload, User, Zap } from 'lucide-react'
-import type { BodyArea, Equipment, ExperienceLevel, Goal, SplitType, TemplateSlot } from '../engine/types'
-import { BODY_AREAS, EQUIPMENT, GOALS, LEVELS, SPLITS, bodyAreaHe, equipmentHe, goalHe, levelHe, patternHe, recommendedSplit, splitHe, uid } from '../engine/types'
-import { catalog } from '../engine/catalog'
+import { useMemo, useRef, useState } from 'react'
+import { ArrowLeftRight, ArrowUp, Bell, CalendarPlus, Columns2, Columns3, Download, Dumbbell, Flame, HardDrive, Info, ListChecks, MapPin, Plus, Settings2, Sparkles, Star, Timer, Trash, Upload, User, Zap } from 'lucide-react'
+import type { BodyArea, BodyPart, Equipment, ExperienceLevel, Goal, Program, SplitDesign, SplitKind, TemplateSlot, WorkoutTemplate } from '../engine/types'
+import { BASIC_EQUIPMENT, BODY_AREAS, BODY_PARTS, GOALS, LEVELS, MULTI_TRAINER, STATIONS, bodyAreaHe, equipmentHe, goalHe, levelHe, partHe, partOfPattern, patternHe, uid } from '../engine/types'
+import type { Exercise } from '../engine/catalog'
+import { catalog, isTimed, partOf } from '../engine/catalog'
 import { activeProgram, streakEntries, totalXPOf } from '../engine/finisher'
-import { generateProgram, materializeProgram, nextTemplate } from '../engine/program'
+import { generateProgram, materializeProgram, nextTemplate, scheme } from '../engine/program'
+import { dayName, defaultDesign, focusLabel, generateFromDesign, kindHe, kindSub, maxPerPart } from '../engine/split'
+import { favoritesOf, restSettings, toggleFavorite, updateRest } from '../engine/prefs'
+import { LOCATION_PRESETS, locationFromPreset } from '../engine/locations'
+import { makeBuilder, templateSlots } from '../planning'
 import { ACHIEVEMENTS, categoryHe, computeStreak, levelInfo, levelProgress, levelTitle, TIERS } from '../engine/motivation'
 import type { AchievementCategory } from '../engine/motivation'
-import { fmtDayMonth, fmtGrouped, ltr } from '../engine/format'
+import { fmtDayMonth, fmtDuration, fmtGrouped, ltr } from '../engine/format'
 import { commit, getData, replaceData, useData } from '../store'
 import { nav } from '../uiState'
 import { backupFileName, downloadBlob, exportBackup, importBackup, remindersICS, shareOrDownload } from '../backup'
-import { Chip, ChevronBack, ChevronForward, Confirm, Empty, LevelBadge, NumberField, Ring, SelectCard, Sheet, SheetHeader, StatTile, Toggle, WeekdayPicker } from '../ui/kit'
+import { Chip, ChevronBack, ChevronForward, Confirm, Empty, ExerciseThumb, LevelBadge, NumberField, Ring, SecondsStepper, Seg, SelectCard, Sheet, SheetHeader, StatTile, Tag, Toggle, WeekdayPicker } from '../ui/kit'
 import { achievementIcon, locationIcon } from '../ui/icons'
-import { ExercisePicker } from './Pickers'
+import { equipmentCaption, ExercisePicker, FavStar } from './Pickers'
 
 function Header({ title }: { title: string }) {
   return (
@@ -31,8 +36,9 @@ export function ProfileScreen() {
   const streak = computeStreak(streakEntries(data.sessions), p.weeklyGoal)
   const unlocked = new Set(data.achievements.map((a) => a.id))
   const items: [string, typeof User, string][] = [
-    ['program', ListChecks, 'התוכנית שלי'], ['locations', MapPin, 'מיקומים וציוד'], ['reminders', Bell, 'תזכורות'],
-    ['personal', User, 'פרטים ומטרות'], ['backup', HardDrive, 'גיבוי ושחזור'],
+    ['program', ListChecks, 'התוכנית שלי'], ['favorites', Star, 'תרגילים מועדפים'], ['rest', Timer, 'זמני מנוחה'],
+    ['locations', MapPin, 'מיקומים וציוד'], ['reminders', Bell, 'תזכורות'], ['personal', User, 'פרטים ומטרות'],
+    ['backup', HardDrive, 'גיבוי ושחזור'],
   ]
   return (
     <div className="screen">
@@ -138,12 +144,37 @@ export function AchievementsScreen() {
   )
 }
 
-export function ProgramEditor() {
+export function ProgramEditor({ openBuilder }: { openBuilder?: boolean }) {
   const data = useData()
   const program = activeProgram(data)
-  const [edit, setEdit] = useState<TemplateSlot | null>(null)
-  const [rebuild, setRebuild] = useState(false)
-  const loc = data.locations[0]
+  const profile = data.profile!
+  const [locID, setLocID] = useState(profile.lastLocationID ?? data.locations[0]?.id)
+  const location = data.locations.find((l) => l.id === locID) ?? data.locations[0]
+  const [edit, setEdit] = useState<{ slot: TemplateSlot; template: WorkoutTemplate } | null>(null)
+  const [swap, setSwap] = useState<{ slot: TemplateSlot; current?: Exercise } | null>(null)
+  const [addTo, setAddTo] = useState<WorkoutTemplate | null>(null)
+  const [build, setBuild] = useState(!!openBuilder || !program)
+  const equipment = useMemo(() => new Set(location?.equipment ?? []), [location])
+  const limitations = new Set(profile.limitations)
+
+  const addSlot = (t: WorkoutTemplate, e: Exercise) => {
+    const part = partOf(e)
+    const sorted = [...t.slots].sort((a, b) => a.order - b.order)
+    let at = -1
+    sorted.forEach((s, i) => { if ((s.part ?? partOfPattern(s.pattern)) === part && !s.flex) at = i })
+    if (at < 0) at = sorted.findIndex((s) => s.flex) - 1
+    if (at < -1) at = sorted.length - 1
+    const bp = scheme(e.pattern, 2, 0, { goals: new Set(profile.goals), level: profile.level, weeklyGoal: profile.weeklyGoal })
+    const slot: TemplateSlot = {
+      id: uid(), order: 0, pattern: e.pattern, priority: bp.priority, variant: 0, sets: bp.sets, repMin: bp.repMin, repMax: bp.repMax,
+      targetRIR: bp.rir, restSeconds: bp.rest, exerciseByLocation: location ? { [location.id]: e.id } : {}, part,
+    }
+    sorted.splice(at + 1, 0, slot)
+    sorted.forEach((s, i) => { s.order = i })
+    t.slots = sorted
+    commit()
+  }
+
   return (
     <div className="screen">
       <Header title="התוכנית שלי" />
@@ -153,34 +184,83 @@ export function ProgramEditor() {
           <span className="lime caption">האימון הבא בתור: {nextTemplate(program)?.name}</span>
           {program.deloadWeekStart && <span className="caption" style={{ color: 'var(--warning)' }}>דילואד מתוכנן לשבוע של {fmtDayMonth(program.deloadWeekStart)}</span>}
         </div>
-        {[...program.templates].sort((a, b) => a.order - b.order).map((t, ti) => (
-          <div key={t.id} className="card">
-            <div className="row">
-              <b className="headline lime grow">{t.name}</b>
-              {t.id !== nextTemplate(program)?.id && <button className="link-btn" style={{ color: 'var(--text2)', fontSize: 13 }} onClick={() => { program.nextIndex = ti; commit() }}>הבא בתור</button>}
+        <button className="btn secondary" onClick={() => setBuild(true)}><Sparkles size={18} /> בניית תוכנית לפי אזורי גוף</button>
+        {data.locations.length > 1 && (
+          <div className="col" style={{ gap: 8 }}>
+            <span className="caption">התרגילים במיקום:</span>
+            <div className="chips scroll">
+              {data.locations.map((l) => <Chip key={l.id} title={l.name} icon={locationIcon[l.icon] ?? MapPin} on={l.id === location?.id} onClick={() => setLocID(l.id)} />)}
             </div>
-            {[...t.slots].sort((a, b) => a.order - b.order).map((s) => {
-              const exName = loc && s.exerciseByLocation[loc.id] ? catalog().exercise(s.exerciseByLocation[loc.id])?.nameHe : undefined
-              return (
-                <button key={s.id} className="row" style={{ textAlign: 'start', padding: '4px 0' }} onClick={() => setEdit(s)}>
-                  <div className="grow col" style={{ gap: 2 }}>
-                    <b style={{ fontSize: 15 }}>{exName ?? patternHe[s.pattern]}</b>
-                    <span className="muted" style={{ fontSize: 12 }}>{patternHe[s.pattern]}{s.priority === 1 ? ' · מרכזי' : ''}</span>
-                  </div>
-                  <span className="num muted" style={{ fontSize: 14 }}>{ltr(`${s.sets}×${s.repMin}–${s.repMax}`)}</span>
-                  <Settings2 size={16} color="var(--text3)" />
-                </button>
-              )
-            })}
           </div>
+        )}
+        {[...program.templates].sort((a, b) => a.order - b.order).map((t, ti) => (
+          <TemplateCard key={t.id} program={program} template={t} index={ti} locationID={location?.id}
+                        onEdit={(slot) => setEdit({ slot, template: t })} onSwap={(slot, current) => setSwap({ slot, current })}
+                        onAdd={() => setAddTo(t)} />
         ))}
-        <button className="btn secondary" onClick={() => setRebuild(true)}><ArrowDownUp size={18} /> בנייה מחדש של התוכנית</button>
+        <span className="caption">⭐ = מועדף. המאמן בוחר מועדפים קודם. ההחלפות נשמרות לכל מיקום בנפרד.</span>
       </> : <>
-        <Empty icon={ListChecks} title="אין תוכנית פעילה" message="אפשר לבנות תוכנית חדשה." />
-        <button className="btn primary" onClick={() => setRebuild(true)}>בניית תוכנית</button>
+        <Empty icon={ListChecks} title="אין תוכנית פעילה" message="אפשר לבנות תוכנית חדשה לפי אזורי גוף." />
+        <button className="btn primary" onClick={() => setBuild(true)}>בניית תוכנית</button>
       </>}
-      {edit && <SlotEditor slot={edit} onClose={() => setEdit(null)} />}
-      {rebuild && <Rebuild onClose={() => setRebuild(false)} />}
+      {edit && <SlotEditor slot={edit.slot} onClose={() => setEdit(null)}
+                           onRemove={() => { edit.template.slots = edit.template.slots.filter((s) => s.id !== edit.slot.id); commit(); setEdit(null) }} />}
+      {swap && location && (
+        <ExercisePicker title={`החלפה · ${location.name}`} pattern={swap.current?.pattern ?? swap.slot.pattern}
+                        part={swap.slot.part ?? partOfPattern(swap.slot.pattern)} equipment={equipment} limitations={limitations}
+                        currentID={swap.current?.id} onClose={() => setSwap(null)}
+                        onPick={(e) => { swap.slot.exerciseByLocation[location.id] = e.id; commit() }} />
+      )}
+      {addTo && (
+        <ExercisePicker title={`הוספה ל${addTo.name.split(' · ')[0]}`} equipment={equipment} limitations={limitations}
+                        onClose={() => setAddTo(null)} onPick={(e) => addSlot(addTo, e)} />
+      )}
+      {build && <ProgramBuilder onClose={() => setBuild(false)} />}
+    </div>
+  )
+}
+
+function TemplateCard({ program, template: t, index, locationID, onEdit, onSwap, onAdd }: {
+  program: Program; template: WorkoutTemplate; index: number; locationID?: string
+  onEdit: (s: TemplateSlot) => void; onSwap: (s: TemplateSlot, current?: Exercise) => void; onAdd: () => void
+}) {
+  const data = useData()
+  const location = data.locations.find((l) => l.id === locationID)
+  const plan = makeBuilder(data, location).build(templateSlots(t, locationID), new Set(location?.equipment ?? []),
+    new Set(data.profile?.limitations ?? []), 999, false)
+  const bySlot = new Map(plan.exercises.map((p) => [p.slot.slotID, p]))
+  const slots = [...t.slots].sort((a, b) => a.order - b.order)
+  const partOfSlot = (s: TemplateSlot): BodyPart => s.part ?? partOfPattern(s.pattern)
+  return (
+    <div className="card">
+      <div className="row">
+        <b className="headline lime grow">{t.name}</b>
+        {t.id !== nextTemplate(program)?.id
+          ? <button className="link-btn" style={{ color: 'var(--text2)', fontSize: 13 }} onClick={() => { program.nextIndex = index; commit() }}>הבא בתור</button>
+          : <Tag text="הבא בתור" filled />}
+      </div>
+      {slots.map((s, i) => {
+        const p = bySlot.get(s.id)
+        const showHeader = i === 0 || partOfSlot(slots[i - 1]) !== partOfSlot(s)
+        return (
+          <div key={s.id} className="col" style={{ gap: 6 }}>
+            {showHeader && <b className="caption" style={{ fontWeight: 800, marginTop: i ? 6 : 0 }}>{partHe[partOfSlot(s)]}</b>}
+            <div className="row" style={{ gap: 10 }}>
+              <ExerciseThumb exercise={p?.exercise} size={42} />
+              <button className="grow col" style={{ gap: 2, textAlign: 'start', minWidth: 0 }} onClick={() => onSwap(s, p?.exercise)}>
+                <b style={{ fontSize: 15 }}>{p?.exercise.nameHe ?? 'אין תרגיל מתאים לציוד כאן'}</b>
+                <span className="muted ellipsis" style={{ fontSize: 12 }}>
+                  {ltr(`${s.sets}×${p?.slot.repMin ?? s.repMin}–${p?.slot.repMax ?? s.repMax}`)}{p && isTimed(p.exercise) ? ' שנ׳' : ''} · {focusLabel(s.focus) ?? patternHe[s.pattern]}{s.flex ? ' · אם יש זמן' : ''}
+                </span>
+              </button>
+              {p && <FavStar id={p.exercise.id} size={34} />}
+              <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => onSwap(s, p?.exercise)} aria-label="החלפה"><ArrowLeftRight size={15} color="var(--lime)" /></button>
+              <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => onEdit(s)} aria-label="הגדרות"><Settings2 size={15} color="var(--text3)" /></button>
+            </div>
+          </div>
+        )
+      })}
+      <button className="link-btn row" style={{ gap: 6, fontSize: 14 }} onClick={onAdd}><Plus size={16} /> הוספת תרגיל</button>
     </div>
   )
 }
@@ -196,21 +276,22 @@ function Stepper({ label, value, set, min, max, step = 1 }: { label: string; val
   )
 }
 
-function SlotEditor({ slot, onClose }: { slot: TemplateSlot; onClose: () => void }) {
+function SlotEditor({ slot, onClose, onRemove }: { slot: TemplateSlot; onClose: () => void; onRemove: () => void }) {
   const data = useData()
   const [pickFor, setPickFor] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
   const up = (patch: Partial<TemplateSlot>) => { Object.assign(slot, patch); commit() }
   const loc = data.locations.find((l) => l.id === pickFor)
   return (
     <Sheet onClose={onClose} full>
-      <SheetHeader title={patternHe[slot.pattern]} onClose={onClose} closeLabel="סיום" />
+      <SheetHeader title={focusLabel(slot.focus) ?? patternHe[slot.pattern]} onClose={onClose} closeLabel="סיום" />
       <div className="card">
         <b className="caption">סטים וחזרות</b>
         <Stepper label="סטים" value={slot.sets} set={(v) => up({ sets: v })} min={1} max={8} />
         <Stepper label="מינימום חזרות" value={slot.repMin} set={(v) => up({ repMin: Math.min(v, slot.repMax) })} min={1} max={50} />
         <Stepper label="מקסימום חזרות" value={slot.repMax} set={(v) => up({ repMax: Math.max(v, slot.repMin) })} min={1} max={50} />
         <Stepper label="RIR יעד" value={slot.targetRIR} set={(v) => up({ targetRIR: v })} min={0} max={4} />
-        <Stepper label="מנוחה (שנ׳)" value={slot.restSeconds} set={(v) => up({ restSeconds: v })} min={15} max={300} step={15} />
+        <span className="caption">זמני המנוחה נקבעים בפרופיל, ב״זמני מנוחה״.</span>
       </div>
       <div className="card">
         <b className="caption">תרגיל לכל מיקום</b>
@@ -224,40 +305,115 @@ function SlotEditor({ slot, onClose }: { slot: TemplateSlot; onClose: () => void
           )
         })}
       </div>
+      <button className="btn danger" onClick={() => setConfirmRemove(true)}><Trash size={18} /> הסרה מהתוכנית</button>
       {loc && (
-        <ExercisePicker title={loc.name} pattern={slot.pattern} equipment={new Set(loc.equipment)} limitations={new Set(data.profile?.limitations ?? [])}
+        <ExercisePicker title={loc.name} pattern={slot.pattern} part={slot.part ?? partOfPattern(slot.pattern)} equipment={new Set(loc.equipment)}
+                        limitations={new Set(data.profile?.limitations ?? [])}
                         currentID={slot.exerciseByLocation[loc.id]} onClose={() => setPickFor(null)}
                         onPick={(e) => { slot.exerciseByLocation[loc.id] = e.id; commit() }} />
       )}
+      {confirmRemove && <Confirm title="להסיר את התרגיל מהתוכנית?" confirm="הסרה" danger onCancel={() => setConfirmRemove(false)} onConfirm={onRemove} />}
     </Sheet>
   )
 }
 
-function Rebuild({ onClose }: { onClose: () => void }) {
+/** בונה התוכנית: פול באדי / A-B / A-B-C, ואזורי גוף עם מספר תרגילים לכל אימון */
+function ProgramBuilder({ onClose }: { onClose: () => void }) {
   const data = getData()
   const p = data.profile!
-  const [split, setSplit] = useState<SplitType>(recommendedSplit(p.weeklyGoal))
+  const current = activeProgram(data)
   const [goals, setGoals] = useState<Goal[]>(p.goals)
-  const sub: Record<SplitType, string> = {
-    fullBody: '2–3 אימונים בשבוע, כל הגוף בכל אימון', upperLower: '4 אימונים בשבוע, עליון ותחתון לסירוגין', pushPullLegs: '5–6 אימונים בשבוע, פיצול לפי תנועות',
+  const [mode, setMode] = useState<SplitKind | 'coach'>(current?.design?.kind ?? 'ab')
+  const [design, setDesign] = useState<SplitDesign>(current?.design ? structuredClone(current.design) : defaultDesign('ab', new Set(p.goals)))
+  const upd = (f: (d: SplitDesign) => void) => setDesign((d) => { const n = structuredClone(d); f(n); return n })
+
+  const choose = (k: SplitKind | 'coach') => {
+    setMode(k)
+    if (k !== 'coach') setDesign(current?.design?.kind === k ? structuredClone(current.design) : defaultDesign(k, new Set(goals)))
   }
-  const icons = { fullBody: Dumbbell, upperLower: ArrowDownUp, pushPullLegs: Columns3 }
+
   const go = () => {
     p.goals = GOALS.filter((g) => goals.includes(g))
+    const input = { goals: new Set(goals), level: p.level, weeklyGoal: p.weeklyGoal }
+    const program = materializeProgram(mode === 'coach' ? generateProgram(input) : generateFromDesign(design, input))
+    // שומרים החלפות שנעשו בתוכנית הקודמת, כשאותו סוג תרגיל נשאר באותו אימון
+    if (current) {
+      program.templates.forEach((t, ti) => {
+        const old = [...current.templates].sort((a, b) => a.order - b.order)[ti]
+        if (!old) return
+        for (const s of t.slots) {
+          const match = old.slots.find((o) => o.focus && o.focus === s.focus)
+          if (match) s.exerciseByLocation = { ...match.exerciseByLocation }
+        }
+      })
+      if (current.templates.length === program.templates.length) program.nextIndex = current.nextIndex
+    }
     for (const pr of data.programs) pr.isActive = false
-    data.programs.push(materializeProgram(generateProgram({ goals: new Set(goals), level: p.level, weeklyGoal: p.weeklyGoal, split })))
+    data.programs.push(program)
     commit(true)
     onClose()
   }
+
+  const icons = { fullBody: Dumbbell, ab: Columns2, abc: Columns3, coach: Sparkles }
+  const total = (i: number) => design.days[i].parts.reduce((a, x) => a + x.count, 0)
+
   return (
     <Sheet onClose={onClose} full>
-      <SheetHeader title="תוכנית חדשה" onClose={onClose} closeLabel="ביטול" />
-      <span className="muted">המאמן יבנה תוכנית חדשה. ההיסטוריה, השיאים וה־XP נשמרים.</span>
-      <b className="headline">פיצול</b>
-      {SPLITS.map((s) => <SelectCard key={s} title={splitHe[s]} subtitle={sub[s]} icon={icons[s]} on={split === s} onClick={() => setSplit(s)} />)}
+      <SheetHeader title="בניית תוכנית" onClose={onClose} closeLabel="ביטול" />
+      <span className="muted">בוחרים סוג תוכנית ואזורי גוף לכל אימון. המאמן בוחר תרגילים לפי הציוד והמועדפים, ואפשר להחליף כל תרגיל. ההיסטוריה, השיאים וה־XP נשמרים.</span>
+      {(['fullBody', 'ab', 'abc'] as SplitKind[]).map((k) => (
+        <SelectCard key={k} title={kindHe[k]} subtitle={kindSub[k]} icon={icons[k]} on={mode === k} onClick={() => choose(k)} />
+      ))}
+      <SelectCard title="המאמן יחליט" subtitle="פיצול לפי מספר האימונים בשבוע (גוף מלא, עליון/תחתון או דחיקה/משיכה/רגליים)" icon={icons.coach} on={mode === 'coach'} onClick={() => choose('coach')} />
+
+      {mode !== 'coach' && <>
+        {design.days.map((d, di) => (
+          <div key={di} className="card">
+            <div className="row">
+              <b className="headline lime grow">{dayName(design, d, di)}</b>
+              <span className="caption num">{total(di)} תרגילים</span>
+              {design.kind === 'fullBody' && design.days.length > 1 && (
+                <button aria-label="מחיקת אימון" onClick={() => upd((n) => { n.days.splice(di, 1) })}><Trash size={16} color="var(--danger)" /></button>
+              )}
+            </div>
+            {d.parts.map((pp, pi) => (
+              <div key={pp.part} className="row" style={{ gap: 8 }}>
+                <button className="icon-btn" style={{ width: 30, height: 30, opacity: pi ? 1 : 0.3 }} disabled={!pi} aria-label="למעלה"
+                        onClick={() => upd((n) => { const ps = n.days[di].parts; [ps[pi - 1], ps[pi]] = [ps[pi], ps[pi - 1]] })}>
+                  <ArrowUp size={14} />
+                </button>
+                <b className="grow">{partHe[pp.part]}</b>
+                <button className="icon-btn" style={{ width: 36, height: 36 }} aria-label="פחות"
+                        onClick={() => upd((n) => { const x = n.days[di].parts[pi]; x.count--; if (x.count <= 0) n.days[di].parts.splice(pi, 1) })}>−</button>
+                <span className="num" style={{ width: 70, textAlign: 'center', fontSize: 14 }}>{pp.count === 1 ? 'תרגיל 1' : `${pp.count} תרגילים`}</span>
+                <button className="icon-btn" style={{ width: 36, height: 36 }} aria-label="יותר" disabled={pp.count >= maxPerPart(pp.part)}
+                        onClick={() => upd((n) => { n.days[di].parts[pi].count++ })}>+</button>
+              </div>
+            ))}
+            <div className="chips">
+              {BODY_PARTS.filter((bp) => !d.parts.some((x) => x.part === bp)).map((bp) => (
+                <Chip key={bp} title={`+ ${partHe[bp]}`} on={false} onClick={() => upd((n) => { n.days[di].parts.push({ part: bp, count: 1 }) })} />
+              ))}
+            </div>
+          </div>
+        ))}
+        {design.kind === 'fullBody' && design.days.length < 3 && (
+          <button className="btn secondary small" onClick={() => upd((n) => { n.days.push(structuredClone(n.days[n.days.length - 1])) })}>
+            <Plus size={16} /> וריאציה נוספת (גוף מלא {design.days.length === 1 ? 'B' : 'C'})
+          </button>
+        )}
+        <div className="card">
+          <b className="headline">בטן</b>
+          <span className="caption">נכנסת בסוף כל אימון כשיש זמן, ואפשר לוותר עליה לפני האימון.</span>
+          <Seg value={String(design.absFlex)} options={[['0', 'בלי'], ['1', 'תרגיל 1'], ['2', '2 תרגילים'], ['3', '3 תרגילים']]}
+               onChange={(v) => upd((n) => { n.absFlex = Number(v) })} />
+          <Toggle label="פינישר אירובי בסוף (הליכון / כושר), אם יש זמן" on={design.finisher} onChange={(v) => upd((n) => { n.finisher = v })} />
+        </div>
+      </>}
+
       <b className="headline">מטרות</b>
       <div className="chips">{GOALS.map((g) => <Chip key={g} title={goalHe[g]} on={goals.includes(g)} onClick={() => setGoals(goals.includes(g) ? goals.filter((x) => x !== g) : [...goals, g])} />)}</div>
-      <button className="btn primary" disabled={!goals.length} onClick={go}>בניית תוכנית חדשה</button>
+      <button className="btn primary" disabled={!goals.length || (mode !== 'coach' && design.days.some((_, i) => total(i) === 0))} onClick={go}>בניית התוכנית</button>
     </Sheet>
   )
 }
@@ -266,26 +422,50 @@ export function LocationsSettings() {
   const data = useData()
   const [name, setName] = useState('')
   const [del, setDel] = useState<string | null>(null)
+  const tog = (arr: Equipment[], e: Equipment) => (arr.includes(e) ? arr.filter((x) => x !== e) : [...arr, e])
+  const hasPresetName = (n: string) => data.locations.some((l) => l.name === n)
   return (
     <div className="screen">
       <Header title="מיקומים וציוד" />
-      {data.locations.sort((a, b) => a.sortOrder - b.sortOrder).map((l) => {
+      {[...data.locations].sort((a, b) => a.sortOrder - b.sortOrder).map((l) => {
         const Icon = locationIcon[l.icon] ?? MapPin
+        const stack = l.equipment.some((e) => STATIONS.includes(e) && e !== 'treadmill') || l.equipment.includes('cable') || l.equipment.includes('machine')
+        const allMulti = MULTI_TRAINER.every((e) => l.equipment.includes(e))
+        const lim = (patch: Partial<NonNullable<typeof l.limits>>) => { l.limits = { ...(l.limits ?? {}), ...patch }; commit() }
         return (
           <div key={l.id} className="card">
             <div className="row"><Icon size={18} /><b className="headline grow">{l.name}</b><button onClick={() => setDel(l.id)} aria-label="מחיקה"><Trash size={18} color="var(--danger)" /></button></div>
+            <span className="caption">ציוד חופשי וחדר כושר מלא</span>
             <div className="chips">
-              {EQUIPMENT.map((e: Equipment) => (
-                <Chip key={e} title={equipmentHe[e]} on={l.equipment.includes(e)}
-                      onClick={() => { l.equipment = l.equipment.includes(e) ? l.equipment.filter((x) => x !== e) : [...l.equipment, e]; commit() }} />
-              ))}
+              {BASIC_EQUIPMENT.map((e) => <Chip key={e} title={equipmentHe[e]} on={l.equipment.includes(e)} onClick={() => { l.equipment = tog(l.equipment, e); commit() }} />)}
             </div>
+            <span className="caption">מולטי טריינר / מכונות ביתיות</span>
+            <div className="chips">
+              <Chip title="מולטי טריינר (הכול)" icon={Dumbbell} on={allMulti}
+                    onClick={() => { l.equipment = allMulti ? l.equipment.filter((e) => !MULTI_TRAINER.includes(e)) : [...new Set([...l.equipment, ...MULTI_TRAINER])]; commit() }} />
+              {STATIONS.map((e) => <Chip key={e} title={equipmentHe[e]} on={l.equipment.includes(e)} onClick={() => { l.equipment = tog(l.equipment, e); commit() }} />)}
+            </div>
+            {l.equipment.includes('dumbbell') && (
+              <NumberField title="משקולות עד" value={l.limits?.dumbbellMax ?? 0} unit={l.limits?.dumbbellMax ? 'ק״ג' : 'בלי הגבלה'} step={1} min={0} max={80}
+                           onChange={(v) => lim({ dumbbellMax: v || undefined })} />
+            )}
+            {stack && <>
+              <NumberField title="פלטה במכונה" value={l.limits?.stackStep ?? 0} unit={l.limits?.stackStep ? 'ק״ג' : 'רגיל'} step={0.5} min={0} max={20}
+                           onChange={(v) => lim({ stackStep: v || undefined })} />
+              <NumberField title="מכונה עד" value={l.limits?.stackMax ?? 0} unit={l.limits?.stackMax ? 'ק״ג' : 'בלי הגבלה'} step={1} min={0} max={300}
+                           onChange={(v) => lim({ stackMax: v || undefined })} />
+            </>}
             {!l.equipment.length && <span className="caption">בלי ציוד: רק תרגילי משקל גוף.</span>}
           </div>
         )
       })}
+      <b className="headline">הוספת מיקום</b>
+      {LOCATION_PRESETS.filter((pr) => !hasPresetName(pr.name)).map((pr) => (
+        <SelectCard key={pr.key} title={pr.name} subtitle={pr.subtitle} icon={locationIcon[pr.icon] ?? MapPin} on={false}
+                    onClick={() => { data.locations.push(locationFromPreset(pr, data.locations.length)); commit() }} />
+      ))}
       <div className="row">
-        <input className="text-input" placeholder="מיקום חדש (למשל: מלון)" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="text-input" placeholder="מיקום אחר (למשל: מלון)" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="icon-btn" style={{ width: 54, height: 54, borderRadius: 14, background: 'var(--lime)' }} disabled={!name.trim()}
                 onClick={() => { data.locations.push({ id: uid(), name: name.trim(), icon: 'pin', equipment: [], sortOrder: data.locations.length }); setName(''); commit() }}>
           <Plus size={20} color="#000" strokeWidth={3} />
@@ -293,6 +473,89 @@ export function LocationsSettings() {
       </div>
       {del && <Confirm title="למחוק את המיקום?" confirm="מחיקה" danger onCancel={() => setDel(null)}
                        onConfirm={() => { const d = getData(); d.locations = d.locations.filter((x) => x.id !== del); commit(); setDel(null) }} />}
+    </div>
+  )
+}
+
+export function RestSettingsScreen() {
+  const data = useData()
+  const p = data.profile!
+  const r = restSettings(p)
+  const overrides = Object.entries(r.byExercise)
+  return (
+    <div className="screen">
+      <Header title="זמני מנוחה" />
+      <div className="card">
+        <b className="headline">בין סט לסט</b>
+        <Seg value={r.mode} options={[['auto', 'לפי המאמן'], ['fixed', 'זמן קבוע שלי']]} onChange={(v) => { updateRest(p, { mode: v }); commit() }} />
+        {r.mode === 'auto'
+          ? <span className="caption">תרגילים מרכזיים כבדים מקבלים יותר מנוחה (עד 2:30), תרגילי בידוד ובטן פחות (0:45–1:15).</span>
+          : <SecondsStepper label="זמן" value={r.sets} onChange={(v) => { updateRest(p, { sets: v }); commit() }} />}
+      </div>
+      <div className="card">
+        <b className="headline">בין תרגיל לתרגיל</b>
+        <SecondsStepper label="זמן" value={r.exercises} onChange={(v) => { updateRest(p, { exercises: v }); commit() }} />
+        <span className="caption">מתחילה אוטומטית אחרי הסט האחרון של כל תרגיל.</span>
+      </div>
+      {overrides.length > 0 && (
+        <div className="card">
+          <b className="headline">זמן מיוחד לתרגילים</b>
+          {overrides.map(([id, sec]) => (
+            <div key={id} className="row">
+              <span className="grow ellipsis">{catalog().exercise(id)?.nameHe ?? id}</span>
+              <span className="num" dir="ltr">{fmtDuration(sec)}</span>
+              <button aria-label="מחיקה" onClick={() => { const n = restSettings(p); delete n.byExercise[id]; p.rest = n; commit() }}><Trash size={16} color="var(--danger)" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="card">
+        <Toggle label="טיימר מנוחה אוטומטי" on={p.restAutoStart} onChange={(v) => { p.restAutoStart = v; commit() }} />
+        <Toggle label="צליל בסוף המנוחה" on={p.soundsOn} onChange={(v) => { p.soundsOn = v; commit() }} />
+      </div>
+      <span className="caption">אפשר לשנות גם באמצע אימון: לוחצים על "מנוחה" ליד התרגיל, ושם אפשר גם לקבוע זמן רק לתרגיל אחד.</span>
+    </div>
+  )
+}
+
+export function FavoritesScreen() {
+  const data = useData()
+  const [add, setAdd] = useState(false)
+  const favs = favoritesOf(data)
+  const list = [...favs].map((id) => catalog().exercise(id)).filter((e): e is Exercise => !!e)
+  const allEquipment = new Set<Equipment>(data.locations.flatMap((l) => l.equipment))
+  return (
+    <div className="screen">
+      <Header title="תרגילים מועדפים" />
+      <div className="card" style={{ flexDirection: 'row', gap: 10 }}>
+        <Star size={18} color="var(--lime)" fill="var(--lime)" style={{ flex: 'none', marginTop: 2 }} />
+        <span className="muted" style={{ fontSize: 14 }}>
+          המאמן בוחר מועדפים קודם, בכל פעם שהם מתאימים לסוג התרגיל ולציוד במיקום. מסמנים ⭐ בכל מקום: ברשימת התרגילים, באימון ובתוכנית.
+        </span>
+      </div>
+      {!list.length && <Empty icon={Star} title="עוד אין מועדפים" message="מוסיפים תרגילים שאוהבים, והם יופיעו יותר באימונים." />}
+      {BODY_PARTS.map((bp) => {
+        const items = list.filter((e) => partOf(e) === bp)
+        if (!items.length) return null
+        return (
+          <div key={bp} className="col" style={{ gap: 6 }}>
+            <b className="caption lime" style={{ fontWeight: 800 }}>{partHe[bp]}</b>
+            {items.map((e) => (
+              <div key={e.id} className="list-row">
+                <ExerciseThumb exercise={e} size={44} />
+                <div className="grow col" style={{ gap: 2, minWidth: 0 }}>
+                  <b style={{ fontSize: 15 }}>{e.nameHe}</b>
+                  <span className="caption ellipsis">{equipmentCaption(e)}</span>
+                </div>
+                <FavStar id={e.id} />
+              </div>
+            ))}
+          </div>
+        )
+      })}
+      <button className="btn secondary" onClick={() => setAdd(true)}><Plus size={18} /> הוספת מועדפים</button>
+      {add && <ExercisePicker title="הוספה למועדפים" equipment={allEquipment} onClose={() => setAdd(false)}
+                              onPick={(e) => { if (!favs.has(e.id)) { toggleFavorite(getData(), e.id); commit() } }} />}
     </div>
   )
 }

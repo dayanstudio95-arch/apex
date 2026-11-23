@@ -56,6 +56,7 @@ export function progressionLine(note: ProgressionNote, nextName: string): string
     case 'hold': return 'בפעם הקודמת היה קשה. נשארים באותו משקל ומחזקים את הבסיס.'
     case 'decrease': return 'הורדנו מעט משקל כדי לבנות מחדש מומנטום. צעד אחד אחורה בשביל שניים קדימה.'
     case 'advanceVariation': return `הווריאציה הקודמת נכבשה. עוברים ל${nextName}.`
+    case 'maxedOut': return `הגעת ל-${fmtWeight(note.max)} ק״ג, המשקל הכי כבד שיש כאן. מעכשיו מתקדמים בחזרות: עוד חזרה אחת כל פעם, ותנועה איטית ומבוקרת.`
   }
 }
 

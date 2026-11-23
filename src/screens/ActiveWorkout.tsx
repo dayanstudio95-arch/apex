@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeftRight, Check, ChevronDown, Ellipsis, FlagTriangleRight, History, Info, Minus, Plus, SkipForward, Sparkles, Target, Timer, Trash } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, Ellipsis, FlagTriangleRight, History, Info, Minus, Plus, Settings2, SkipForward, Sparkles, Target, Timer, Trash } from 'lucide-react'
 import type { ExerciseLog, SetLog, WorkoutSession } from '../engine/types'
-import { muscleHe, uid } from '../engine/types'
+import { muscleHe, partHe, partOfPattern, uid } from '../engine/types'
 import type { Exercise } from '../engine/catalog'
-import { catalog, hidesWeight, isTimed } from '../engine/catalog'
+import { catalog, hidesWeight, isTimed, loadRule } from '../engine/catalog'
 import { HistoryIndex, isLogDone, lastSummary, orderedExercises, orderedSets, workSets } from '../engine/history'
-import { SessionBuilder, fillSets, makeLog } from '../engine/session'
+import { fillSets, makeLog } from '../engine/session'
 import type { SlotInput } from '../engine/session'
+import { restBetweenExercises, restBetweenSets, restSettings, saveSetRest, updateRest } from '../engine/prefs'
+import { makeBuilder } from '../planning'
 import { finishSession, activeProgram } from '../engine/finisher'
 import type { FinishResult } from '../engine/finisher'
 import { progressionLine } from '../engine/coach'
@@ -15,8 +17,8 @@ import { isMainLift } from '../engine/types'
 import { commit, getData, useData } from '../store'
 import { nav } from '../uiState'
 import { remaining, restTimer, useRestTimer } from '../timer'
-import { ChevronBack, ChevronForward, Confirm, ExerciseImage, RepeatButton, Ring, Tag } from '../ui/kit'
-import { ExerciseInfo, ExercisePicker, NumberPad } from './Pickers'
+import { ChevronBack, ChevronForward, Confirm, ExerciseImage, RepeatButton, Ring, SecondsStepper, Sheet, Tag, Toggle } from '../ui/kit'
+import { ExerciseInfo, ExercisePicker, FavStar, NumberPad } from './Pickers'
 import Summary from './Summary'
 
 export default function ActiveWorkout({ session }: { session: WorkoutSession }) {
@@ -31,6 +33,7 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
   const [showAdd, setShowAdd] = useState(false)
   const [menu, setMenu] = useState(false)
   const [confirm, setConfirm] = useState<'finish' | 'cancel' | null>(null)
+  const [restFor, setRestFor] = useState<ExerciseLog | null>(null)
   const timer = useRestTimer()
   const [, setTick] = useState(0)
 
@@ -79,7 +82,9 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
     if (!profile.restAutoStart || (allDone && index >= exercises.length - 1)) { restTimer.stop(); return }
     const next = orderedSets(log).find((x) => !x.isCompleted)
     const label = allDone && exercises[index + 1] ? `הבא: ${exercises[index + 1].exerciseName}` : next ? `סט הבא: ${next.weight > 0 ? ltr(`${fmtWeight(next.weight)}×${next.reps}`) : `${next.reps} חזרות`}` : ''
-    restTimer.start(s.kind === 'warmup' ? 60 : log.restSeconds, label)
+    // בין סטים: לפי ההגדרה האישית (או המאמן). אחרי הסט האחרון: מנוחה בין תרגילים
+    const seconds = s.kind === 'warmup' ? 60 : allDone ? restBetweenExercises(profile) : restBetweenSets(profile, log.exerciseID, log.restSeconds)
+    restTimer.start(seconds, label)
   }
 
   const addSet = (log: ExerciseLog) => {
@@ -93,7 +98,7 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
     if (last) { log.sets = log.sets.filter((x) => x.id !== last.id); commit() }
   }
 
-  const builder = () => new SessionBuilder(cat, history)
+  const builder = () => makeBuilder(data, location, data.sessions.filter((s) => s.id !== session.id))
   const slotOf = (log: ExerciseLog, ex: Exercise): SlotInput => ({
     slotID: log.slotID, pattern: ex.pattern, priority: log.priority, variant: 0, sets: Math.max(1, workSets(log).length),
     repMin: log.repMin, repMax: log.repMax, rir: log.targetRIR, rest: log.restSeconds,
@@ -156,7 +161,9 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
   const last = current ? lastSummary(history.history(current.exerciseID)) : undefined
   const timed = ex ? isTimed(ex) : false
   const noWeight = hidesWeight(ex)
-  const step = ex && ex.increment > 0 ? ex.increment : 2.5
+  const rule = ex ? loadRule(ex, location?.limits) : { step: 2.5, max: undefined }
+  const step = rule.step > 0 ? rule.step : 2.5
+  const maxW = rule.max ?? Infinity
 
   return (
     <div className="overlay-full">
@@ -186,14 +193,17 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
           <div className="row" style={{ alignItems: 'flex-start' }}>
             <div className="grow col" style={{ gap: 6 }}>
               <h2 className="num" style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>{current.exerciseName}</h2>
-              {ex && <div className="chips">{ex.primaryMuscles.map((m) => <Tag key={m} text={muscleHe[m]} />)}</div>}
+              {ex && <div className="chips"><Tag text={partHe[partOfPattern(ex.pattern)]} filled />{ex.primaryMuscles.filter((m) => muscleHe[m] !== partHe[partOfPattern(ex.pattern)]).map((m) => <Tag key={m} text={muscleHe[m]} />)}</div>}
             </div>
+            {ex && <FavStar id={ex.id} size={40} />}
             {ex && <button className="icon-btn" style={{ width: 40, height: 40 }} onClick={() => setInfoFor(ex)} aria-label="מידע"><Info size={16} color="var(--text2)" /></button>}
             <button className="icon-btn" style={{ width: 40, height: 40 }} onClick={() => setSwapFor(current)} aria-label="החלפה"><ArrowLeftRight size={16} color="var(--lime)" /></button>
           </div>
           <div className="chips">
             <span className="info-pill"><Target size={14} /> {ltr(`${current.repMin}–${current.repMax}`)} {timed ? 'שניות' : 'חזרות'} · RIR {current.targetRIR}</span>
-            <span className="info-pill"><Timer size={14} /> {current.restSeconds} שנ׳</span>
+            <button className="info-pill" onClick={() => setRestFor(current)} aria-label="זמני מנוחה">
+              <Timer size={14} /> מנוחה {fmtDuration(restBetweenSets(profile, current.exerciseID, current.restSeconds))} <Settings2 size={12} color="var(--lime)" />
+            </button>
             {last && <span className="info-pill"><History size={14} /> בפעם הקודמת: {last}</span>}
           </div>
           {current.coachNote && <div className="coach"><Sparkles size={16} color="var(--lime)" style={{ flex: 'none', marginTop: 2 }} /><span style={{ fontSize: 14 }}>{current.coachNote}</span></div>}
@@ -207,7 +217,7 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
                     <div className="val" style={{ opacity: s.isCompleted ? 0.85 : 1 }}>
                       <RepeatButton className="pm" label="פחות משקל" onStep={() => { if (!s.isCompleted) { s.weight = Math.max(0, Math.round((s.weight - step) * 100) / 100); commit() } }}><Minus size={13} strokeWidth={3} /></RepeatButton>
                       <button className="v" onClick={() => !s.isCompleted && setEdit({ set: s, field: 'weight' })}><b>{fmtWeight(s.weight)}</b><small>ק״ג</small></button>
-                      <RepeatButton className="pm" label="יותר משקל" onStep={() => { if (!s.isCompleted) { s.weight = Math.round((s.weight + step) * 100) / 100; commit() } }}><Plus size={13} strokeWidth={3} /></RepeatButton>
+                      <RepeatButton className="pm" label="יותר משקל" onStep={() => { if (!s.isCompleted) { s.weight = Math.min(maxW, Math.round((s.weight + step) * 100) / 100); commit() } }}><Plus size={13} strokeWidth={3} /></RepeatButton>
                     </div>
                   )}
                   <div className="val" style={{ opacity: s.isCompleted ? 0.85 : 1 }}>
@@ -245,7 +255,7 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
       </div>
 
       <div className="col" style={{ position: 'fixed', insetInline: 'var(--gutter)', bottom: 'calc(var(--safe-bottom) + 8px)', gap: 10, zIndex: 6 }}>
-        {timer.endAt != null && <RestBar />}
+        {timer.endAt != null && <RestBar onSettings={current ? () => setRestFor(current) : undefined} />}
         <div className="row">
           <button className="btn secondary" style={{ width: 64, minHeight: 52 }} disabled={index === 0} onClick={() => setIndex(index - 1)} aria-label="הקודם">
             <ChevronBack size={20} />
@@ -287,15 +297,48 @@ export default function ActiveWorkout({ session }: { session: WorkoutSession }) 
       )}
       {infoFor && <ExerciseInfo exercise={infoFor} onClose={() => setInfoFor(null)} />}
       {swapFor && (
-        <ExercisePicker title="החלפת תרגיל" pattern={swapFor.pattern} equipment={equipment} limitations={limitations}
+        <ExercisePicker title="החלפת תרגיל" pattern={swapFor.pattern} part={partOfPattern(swapFor.pattern)} equipment={equipment} limitations={limitations}
                         currentID={swapFor.exerciseID} onClose={() => setSwapFor(null)} onPick={(e) => swap(swapFor, e)} />
       )}
       {showAdd && <ExercisePicker title="הוספת תרגיל" equipment={equipment} limitations={limitations} onClose={() => setShowAdd(false)} onPick={addExercise} />}
+      {restFor && <RestSheet log={restFor} onClose={() => setRestFor(null)} />}
     </div>
   )
 }
 
-function RestBar() {
+/** הגדרת זמני מנוחה מתוך האימון. נשמר לאימונים הבאים */
+export function RestSheet({ log, onClose }: { log: ExerciseLog; onClose: () => void }) {
+  const data = useData()
+  const p = data.profile!
+  const r = restSettings(p)
+  const [sets, setSets] = useState(restBetweenSets(p, log.exerciseID, log.restSeconds))
+  const [between, setBetween] = useState(r.exercises)
+  const [onlyThis, setOnlyThis] = useState(r.byExercise[log.exerciseID] != null)
+  const save = () => {
+    if (onlyThis) saveSetRest(p, sets, log.exerciseID)
+    else {
+      const next = restSettings(p)
+      delete next.byExercise[log.exerciseID]
+      p.rest = next
+      saveSetRest(p, sets)
+    }
+    updateRest(p, { exercises: between })
+    commit()
+    onClose()
+  }
+  return (
+    <Sheet onClose={onClose}>
+      <b className="headline" style={{ textAlign: 'center' }}>זמני מנוחה</b>
+      <SecondsStepper label="בין סט לסט" value={sets} onChange={setSets} />
+      <Toggle label={`רק ל${log.exerciseName}`} on={onlyThis} onChange={setOnlyThis} />
+      <SecondsStepper label="בין תרגיל לתרגיל" value={between} onChange={setBetween} />
+      <span className="caption">ההגדרה נשמרת גם לאימונים הבאים. אפשר לשנות בכל רגע בפרופיל, ב״זמני מנוחה״.</span>
+      <button className="btn primary" onClick={save}>שמירה</button>
+    </Sheet>
+  )
+}
+
+function RestBar({ onSettings }: { onSettings?: () => void }) {
   const t = useRestTimer()
   const [, setTick] = useState(0)
   useEffect(() => { const i = setInterval(() => setTick((x) => x + 1), 250); return () => clearInterval(i) }, [])
@@ -305,7 +348,9 @@ function RestBar() {
     <div className="rest-bar">
       <Ring progress={progress} size={42} stroke={5}><Timer size={14} color="var(--lime)" /></Ring>
       <div className="col" style={{ gap: 0 }}>
-        <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>מנוחה</span>
+        <button className="muted row" style={{ fontSize: 12, fontWeight: 600, gap: 4 }} onClick={onSettings} disabled={!onSettings}>
+          מנוחה {onSettings && <Settings2 size={11} color="var(--lime)" />}
+        </button>
         <span className="num" dir="ltr" style={{ fontSize: 30, lineHeight: 1, color: rem <= 5 ? 'var(--lime)' : 'var(--text)' }}>{fmtDuration(Math.ceil(rem))}</span>
       </div>
       <span className="spacer" />

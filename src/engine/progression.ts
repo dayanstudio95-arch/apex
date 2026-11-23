@@ -12,6 +12,8 @@ export type ProgressionNote =
   | { kind: 'hold' }
   | { kind: 'decrease' }
   | { kind: 'advanceVariation' }
+  /** הגענו למשקל המקסימלי שיש במיקום: מתקדמים בחזרות */
+  | { kind: 'maxedOut'; max: number }
 
 export interface Recommendation { weight: number; reps: number; note: ProgressionNote }
 
@@ -22,8 +24,10 @@ export function roundTo(x: number, step: number): number {
 
 export function recommend(history: ExerciseHistory, opts: {
   repMin: number; repMax: number; targetRIR: number; increment: number; isBodyweight: boolean; hasNextVariation: boolean
+  /** המשקל הכי כבד שיש (למשל משקולות עד 24 ק״ג) */
+  max?: number
 }): Recommendation {
-  const { repMin, repMax, targetRIR, increment, isBodyweight, hasNextVariation } = opts
+  const { repMin, repMax, targetRIR, increment, isBodyweight, hasNextVariation, max } = opts
   const last = history.sessions[0]
   if (!last || last.sets.length === 0) {
     return { weight: 0, reps: Math.floor((repMin + repMax) / 2), note: { kind: 'firstTime' } }
@@ -43,7 +47,13 @@ export function recommend(history: ExerciseHistory, opts: {
   }
 
   if (allTop) {
-    return { weight: roundTo(topWeight + increment, increment), reps: repMin, note: { kind: 'increase', amount: increment } }
+    const next = roundTo(topWeight + increment, increment)
+    if (max != null && next > max) {
+      // אין משקל כבד יותר: קופצים למקסימום אם עוד לא שם, אחרת מוסיפים חזרות
+      if (topWeight < max) return { weight: max, reps: repMin, note: { kind: 'increase', amount: Math.round((max - topWeight) * 100) / 100 } }
+      return { weight: topWeight, reps: Math.min(bestReps + 1, repMax + 10), note: { kind: 'maxedOut', max } }
+    }
+    return { weight: next, reps: repMin, note: { kind: 'increase', amount: Math.round((next - topWeight) * 100) / 100 } }
   }
 
   if (firstReps < repMin) {
@@ -72,8 +82,9 @@ export function consecutiveFailures(history: ExerciseHistory, repMin: number): n
 }
 
 /** סטי חימום אוטומטיים לתרגיל הכבד הראשון */
-export function warmupSets(workWeight: number, baseWeight: number, increment: number): PerformedSet[] {
-  const step = increment > 0 ? Math.min(increment, 2.5) : 2.5
+export function warmupSets(workWeight: number, baseWeight: number, increment: number, exactStep = false): PerformedSet[] {
+  // exactStep: ערימת משקולות במכונה, שבה אפשר רק כפולות של הצעד
+  const step = exactStep && increment > 0 ? increment : increment > 0 ? Math.min(increment, 2.5) : 2.5
   if (workWeight < 30) return []
   const sets: PerformedSet[] = []
   const w1 = Math.max(baseWeight, roundTo(workWeight * 0.5, step))

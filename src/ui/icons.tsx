@@ -20,7 +20,7 @@ export const achievementIcon: Record<string, LucideIcon> = {
 
 /** אייקונים של מיקומים */
 export const locationIcon: Record<string, LucideIcon> = {
-  gym: Building, home: House, outside: TreePine, pin: MapPin,
+  gym: Building, home: House, outside: TreePine, pin: MapPin, dumbbell: Dumbbell,
 }
 
 export const goalIcon: Record<Goal, LucideIcon> = { muscle: Dumbbell, fatLoss: Flame, fitness: Heart, strength: Zap }

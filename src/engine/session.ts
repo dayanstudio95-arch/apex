@@ -1,7 +1,8 @@
-import type { Equipment, BodyArea, ExerciseLog, LocationProfile, MovementPattern, TemplateSlot, WorkoutSession, WorkoutTemplate } from './types'
+import type { BodyArea, BodyPart, Equipment, ExerciseLog, LocationLimits, LocationProfile, MovementPattern, TemplateSlot, WorkoutSession, WorkoutTemplate } from './types'
 import { uid } from './types'
 import type { Exercise, ExerciseCatalog } from './catalog'
-import { baseWeight, isAvailable, isSafe, isTimed, wantsWarmup } from './catalog'
+import { baseWeight, isAvailable, isSafe, isTimed, loadRule, usesStack, wantsWarmup } from './catalog'
+import { focusPrefer } from './split'
 import type { HistoryIndex } from './history'
 import { lastSummary } from './history'
 import type { PerformedSet, ProgressionNote } from './progression'
@@ -19,12 +20,16 @@ export interface SlotInput {
   rir: number
   rest: number
   mappedExerciseID?: string
+  part?: BodyPart
+  focus?: string
+  flex?: boolean
 }
 
 export const slotInput = (slot: TemplateSlot, locationID?: string): SlotInput => ({
   slotID: slot.id, pattern: slot.pattern, priority: slot.priority, variant: slot.variant, sets: slot.sets,
   repMin: slot.repMin, repMax: slot.repMax, rir: slot.targetRIR, rest: slot.restSeconds,
   mappedExerciseID: locationID ? slot.exerciseByLocation[locationID] : undefined,
+  part: slot.part, focus: slot.focus, flex: slot.flex,
 })
 
 export interface PlannedExercise {
@@ -37,43 +42,92 @@ export interface PlannedExercise {
   reps: number
   note: ProgressionNote
   lastSummary?: string
+  /** התרגיל נבחר ידנית (החלפה), ולכן נשמר בתבנית */
+  explicit?: boolean
 }
 
 export interface PlannedSession { exercises: PlannedExercise[]; isDeload: boolean; estimatedSeconds: number }
+
+export interface BuilderOptions {
+  /** תרגילים מועדפים: נבחרים לפני ההמלצה הרגילה */
+  favorites?: Set<string>
+  /** מגבלות ציוד במיקום (משקולות עד X, ערימה בצעדים) */
+  limits?: LocationLimits
+  /** מנוחה בפועל בין סטים, לפי ההגדרות האישיות */
+  restFor?: (exerciseID: string, coachSeconds: number) => number
+}
 
 /** מתאים אימון מתבנית לציוד, לזמן ולהיסטוריה, ברגע שמתחילים */
 export class SessionBuilder {
   private catalog: ExerciseCatalog
   private history: HistoryIndex
+  private opts: BuilderOptions
 
-  constructor(catalog: ExerciseCatalog, history: HistoryIndex) {
+  constructor(catalog: ExerciseCatalog, history: HistoryIndex, opts: BuilderOptions = {}) {
     this.catalog = catalog
     this.history = history
+    this.opts = opts
   }
 
+  /**
+   * בחירת תרגיל לכל משבצת, בשלבים כדי שהתוצאה לא תלויה בסדר:
+   * החלפה ידנית → תרגיל ששמור למיקום → מועדף שמתאים לסוג → מועדף מאותה תנועה → התרגיל המועדף לסוג → לפי עדיפות.
+   */
   build(slots: SlotInput[], equipment: Set<Equipment>, limitations: Set<BodyArea>, minutes: number,
         isDeload: boolean, overrides: Record<string, Exercise> = {}): PlannedSession {
     const used = new Set<string>()
-    const planned: PlannedExercise[] = []
-    for (const slot of slots) {
-      const chosen = (slot.slotID && overrides[slot.slotID]) || this.resolve(slot, equipment, limitations, used)
-      if (!chosen) continue
-      used.add(chosen.id)
-      planned.push(this.plan(chosen, slot, equipment, isDeload))
+    const chosen: (Exercise | undefined)[] = slots.map(() => undefined)
+    const explicit = slots.map(() => false)
+    const take = (i: number, e: Exercise | undefined, isExplicit = false) => {
+      if (!e || chosen[i]) return
+      chosen[i] = e
+      explicit[i] = isExplicit
+      used.add(e.id)
     }
+    slots.forEach((slot, i) => take(i, slot.slotID ? overrides[slot.slotID] : undefined, true))
+    slots.forEach((slot, i) => {
+      if (chosen[i] || !slot.mappedExerciseID || used.has(slot.mappedExerciseID)) return
+      const e = this.catalog.exercise(slot.mappedExerciseID)
+      if (e && isAvailable(e, equipment) && isSafe(e, limitations)) take(i, e)
+    })
+    for (const stage of [0, 1, 2, 3] as const) {
+      slots.forEach((slot, i) => { if (!chosen[i]) take(i, this.pick(slot, equipment, limitations, used, stage)) })
+    }
+    const planned: PlannedExercise[] = []
+    slots.forEach((slot, i) => {
+      const e = chosen[i]
+      if (!e) return
+      const p = this.plan(e, slot, equipment, isDeload)
+      if (explicit[i]) p.explicit = true
+      planned.push(p)
+    })
     this.applyWarmups(planned)
     this.trim(planned, minutes)
-    return { exercises: planned, isDeload, estimatedSeconds: estimateSeconds(planned) }
+    return { exercises: planned, isDeload, estimatedSeconds: this.estimate(planned) }
   }
 
-  resolve(slot: SlotInput, equipment: Set<Equipment>, limitations: Set<BodyArea>, used: Set<string>): Exercise | undefined {
-    if (slot.mappedExerciseID && !used.has(slot.mappedExerciseID)) {
-      const e = this.catalog.exercise(slot.mappedExerciseID)
-      if (e && isAvailable(e, equipment) && isSafe(e, limitations)) return e
-    }
+  private pick(slot: SlotInput, equipment: Set<Equipment>, limitations: Set<BodyArea>, used: Set<string>,
+               stage: 0 | 1 | 2 | 3): Exercise | undefined {
     const cands = this.catalog.candidates(slot.pattern, equipment, limitations).filter((e) => !used.has(e.id))
     if (!cands.length) return undefined
-    return cands[Math.min(slot.variant, cands.length - 1)]
+    const fav = this.opts.favorites ?? new Set<string>()
+    const prefer = focusPrefer(slot.focus)
+    const byID = (id: string) => cands.find((e) => e.id === id)
+    switch (stage) {
+      case 0: return prefer.filter((id) => fav.has(id)).map(byID).find(Boolean)
+      case 1: return cands.find((e) => fav.has(e.id))
+      case 2: return prefer.map(byID).find(Boolean)
+      case 3: return cands[Math.min(slot.variant, cands.length - 1)]
+    }
+  }
+
+  /** מנוחה בפועל לתרגיל (הגדרה אישית או המלצת המאמן) */
+  restOf(p: PlannedExercise): number {
+    return this.opts.restFor ? this.opts.restFor(p.exercise.id, p.slot.rest) : p.slot.rest
+  }
+
+  estimate(planned: PlannedExercise[]): number {
+    return estimateSeconds(planned, (p) => this.restOf(p))
   }
 
   /** המלצה לתרגיל (משמש גם בהחלפת תרגיל באמצע אימון) */
@@ -96,9 +150,10 @@ export class SessionBuilder {
     }
     let ex = exercise
     const next = this.catalog.nextInChain(exercise, equipment)
+    const rule = loadRule(exercise, this.opts.limits)
     const rec = recommend(h, {
-      repMin: slot.repMin, repMax: slot.repMax, targetRIR: slot.rir, increment: exercise.increment,
-      isBodyweight: exercise.isBodyweight, hasNextVariation: !!next,
+      repMin: slot.repMin, repMax: slot.repMax, targetRIR: slot.rir, increment: rule.step,
+      isBodyweight: exercise.isBodyweight, hasNextVariation: !!next, max: rule.max,
     })
     if (rec.note.kind === 'advanceVariation' && next) {
       ex = next
@@ -108,7 +163,7 @@ export class SessionBuilder {
     let sets = slot.sets
     if (isDeload) {
       sets = Math.max(1, Math.round(sets * 0.6))
-      if (rec.weight > 0) rec.weight = roundTo(rec.weight * 0.9, Math.max(ex.increment, 1))
+      if (rec.weight > 0) rec.weight = roundTo(rec.weight * 0.9, Math.max(rule.step, 1))
     }
     return {
       key: uid(), slot, exercise: ex, warmups: [], workSets: sets, weight: rec.weight, reps: rec.reps,
@@ -118,13 +173,15 @@ export class SessionBuilder {
 
   private applyWarmups(planned: PlannedExercise[]) {
     const p = planned.find((x) => wantsWarmup(x.exercise) && x.weight >= 30)
-    if (p) p.warmups = warmupSets(p.weight, baseWeight(p.exercise), p.exercise.increment)
+    if (!p) return
+    const stack = !!this.opts.limits?.stackStep && usesStack(p.exercise)
+    p.warmups = warmupSets(p.weight, baseWeight(p.exercise), loadRule(p.exercise, this.opts.limits).step, stack)
   }
 
   /** קיצוץ לפי זמן: קודם סטים בעדיפות 3, אחר כך תרגילי עדיפות 3, ואז עדיפות 2 */
   private trim(planned: PlannedExercise[], minutes: number) {
     const budget = minutes * 60
-    const over = () => estimateSeconds(planned) > budget
+    const over = () => this.estimate(planned) > budget
     const lastIndex = (f: (p: PlannedExercise) => boolean) => {
       for (let i = planned.length - 1; i >= 0; i--) if (f(planned[i])) return i
       return -1
@@ -139,9 +196,9 @@ export class SessionBuilder {
   }
 }
 
-export function estimateSeconds(planned: PlannedExercise[]): number {
+export function estimateSeconds(planned: PlannedExercise[], restOf: (p: PlannedExercise) => number = (p) => p.slot.rest): number {
   let total = 180
-  for (const p of planned) total += 60 + p.warmups.length * (40 + 45) + p.workSets * (40 + p.slot.rest)
+  for (const p of planned) total += 60 + p.warmups.length * (40 + 45) + p.workSets * (40 + restOf(p))
   return total
 }
 
@@ -178,7 +235,9 @@ export function startSession(plan: PlannedSession, template: WorkoutTemplate | u
     currentExerciseIndex: 0, exercises: plan.exercises.map((p, i) => makeLog(p, i)),
   }
   if (template && location) {
+    // שומרים רק בחירה ידנית או מעבר לווריאציה קשה יותר. בחירה אוטומטית מתעדכנת לבד (למשל כשמסמנים מועדף)
     for (const p of plan.exercises) {
+      if (!p.explicit && p.note.kind !== 'advanceVariation') continue
       const slot = template.slots.find((s) => s.id === p.slot.slotID)
       if (slot) slot.exerciseByLocation[location.id] = p.exercise.id
     }

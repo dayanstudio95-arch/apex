@@ -1,4 +1,4 @@
-import type { ExperienceLevel, Goal, MovementPattern, Program, SplitType } from './types'
+import type { BodyPart, ExperienceLevel, Goal, MovementPattern, Program, SplitDesign, SplitType } from './types'
 import { isMainLift, recommendedSplit, splitHe, uid } from './types'
 
 export interface SlotBlueprint {
@@ -10,14 +10,18 @@ export interface SlotBlueprint {
   repMax: number
   rir: number
   rest: number
+  part?: BodyPart
+  focus?: string
+  flex?: boolean
 }
 export interface TemplateBlueprint { name: string; slots: SlotBlueprint[] }
-export interface ProgramBlueprint { name: string; split: SplitType; templates: TemplateBlueprint[] }
-export interface ProgramInput { goals: Set<Goal>; level: ExperienceLevel; weeklyGoal: number; split?: SplitType }
+export interface ProgramBlueprint { name: string; split: SplitType; templates: TemplateBlueprint[]; design?: SplitDesign }
+type PatternSplit = 'fullBody' | 'upperLower' | 'pushPullLegs'
+export interface ProgramInput { goals: Set<Goal>; level: ExperienceLevel; weeklyGoal: number; split?: PatternSplit }
 
 type Raw = [MovementPattern, number, number] // דפוס, עדיפות, וריאנט
 
-const TEMPLATES: Record<SplitType, [string, Raw[]][]> = {
+const TEMPLATES: Record<PatternSplit, [string, Raw[]][]> = {
   fullBody: [
     ['גוף מלא A', [['squat', 1, 0], ['horizontalPush', 1, 0], ['verticalPull', 1, 0], ['lunge', 2, 0], ['lateralDelt', 2, 0], ['biceps', 3, 0], ['core', 3, 0]]],
     ['גוף מלא B', [['hinge', 1, 0], ['verticalPush', 1, 0], ['horizontalPull', 1, 0], ['quadIsolation', 2, 0], ['chestIsolation', 3, 0], ['triceps', 3, 0], ['calves', 3, 0]]],
@@ -40,7 +44,7 @@ const COMPOUNDS: MovementPattern[] = ['horizontalPush', 'verticalPush', 'horizon
 
 /** "המאמן": בונה תוכנית מדפוסי תנועה לפי מטרות, רמה ויעד שבועי. בלי AI, רק כללים מקצועיים. */
 export function generateProgram(input: ProgramInput): ProgramBlueprint {
-  const split = input.split ?? recommendedSplit(input.weeklyGoal)
+  const split = input.split ?? (recommendedSplit(input.weeklyGoal) as PatternSplit)
   const finisher = input.goals.has('fatLoss') || input.goals.has('fitness')
   const templates = TEMPLATES[split].map(([name, raw]) => {
     const all: Raw[] = finisher ? [...raw, ['conditioning', 3, 0]] : raw
@@ -85,8 +89,10 @@ export function materializeProgram(bp: ProgramBlueprint, now = new Date()): Prog
       slots: t.slots.map((s, si) => ({
         id: uid(), order: si, pattern: s.pattern, priority: s.priority, variant: s.variant, sets: s.sets,
         repMin: s.repMin, repMax: s.repMax, targetRIR: s.rir, restSeconds: s.rest, exerciseByLocation: {},
+        ...(s.part ? { part: s.part } : {}), ...(s.focus ? { focus: s.focus } : {}), ...(s.flex ? { flex: true } : {}),
       })),
     })),
+    ...(bp.design ? { design: structuredClone(bp.design) } : {}),
   }
 }
 
