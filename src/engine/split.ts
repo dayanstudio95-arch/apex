@@ -27,7 +27,7 @@ export const FOCUS: Record<string, Focus> = {
 
   'shoulders.press': { pattern: 'verticalPush', label: 'לחיצת כתפיים', prefer: ['Seated_Dumbbell_Press', 'Standing_Military_Press', 'Machine_Shoulder_Military_Press', 'Arnold_Dumbbell_Press', 'Standing_Dumbbell_Press'] },
   'shoulders.lateral': { pattern: 'lateralDelt', label: 'הרחקה לצדדים', prefer: ['Side_Lateral_Raise', 'Standing_Low-Pulley_Deltoid_Raise', 'Seated_Side_Lateral_Raise', 'Lateral_Raise_-_With_Bands'] },
-  'shoulders.rear': { pattern: 'rearDelt', label: 'כתף אחורית', prefer: ['Face_Pull', 'Reverse_Machine_Flyes', 'Reverse_Flyes', 'Cable_Rope_Rear-Delt_Rows', 'Band_Pull_Apart'] },
+  'shoulders.rear': { pattern: 'rearDelt', label: 'כתף אחורית', prefer: ['Reverse_Flyes', 'Face_Pull', 'Reverse_Machine_Flyes', 'Seated_Bent-Over_Rear_Delt_Raise', 'Cable_Rope_Rear-Delt_Rows', 'Band_Pull_Apart'] },
   'shoulders.front': { pattern: 'lateralDelt', label: 'הרמה קדמית', prefer: ['Front_Dumbbell_Raise', 'Standing_Dumbbell_Upright_Row', 'Upright_Barbell_Row'] },
   'shoulders.press2': { pattern: 'verticalPush', label: 'לחיצת כתפיים נוספת', prefer: ['Arnold_Dumbbell_Press', 'Machine_Shoulder_Military_Press', 'Standing_Dumbbell_Press'] },
 
@@ -84,8 +84,8 @@ export function defaultDesign(kind: SplitKind, goals: Set<Goal> = new Set(['musc
   const finisher = goals.has('fatLoss') || goals.has('fitness')
   const days: Record<SplitKind, DayDesign[]> = {
     fullBody: [day(['chest', 1], ['back', 1], ['legs', 1], ['shoulders', 1], ['biceps', 1], ['triceps', 1])],
-    ab: [day(['chest', 3], ['shoulders', 2], ['triceps', 2]), day(['back', 3], ['biceps', 2], ['legs', 1])],
-    abc: [day(['chest', 3], ['triceps', 2]), day(['back', 3], ['biceps', 2]), day(['shoulders', 3], ['legs', 1])],
+    ab: [day(['chest', 4], ['shoulders', 2], ['triceps', 2]), day(['back', 4], ['biceps', 2], ['legs', 1])],
+    abc: [day(['chest', 4], ['triceps', 2]), day(['back', 4], ['biceps', 2]), day(['shoulders', 3], ['legs', 1])],
   }
   return { kind, days: days[kind], absFlex: 1, finisher }
 }
@@ -97,6 +97,7 @@ export function dayName(design: SplitDesign, d: DayDesign, index: number): strin
 }
 
 const BIG: BodyPart[] = ['chest', 'back', 'shoulders', 'legs']
+const ISOLATION: MovementPattern[] = ['chestIsolation', 'lateralDelt', 'rearDelt', 'quadIsolation', 'hamstringIsolation', 'calves']
 
 function slotPriority(part: BodyPart, i: number): number {
   if (i === 0) return BIG.includes(part) ? 1 : 2
@@ -111,11 +112,15 @@ export function generateFromDesign(design: SplitDesign, input: ProgramInput): Pr
     for (const { part, count } of d.parts) {
       const foci = PART_FOCI[part]
       const offset = design.kind === 'fullBody' ? seen[part] ?? 0 : 0
+      const partSlots: SlotBlueprint[] = []
       for (let i = 0; i < Math.min(count, foci.length); i++) {
         const focus = foci[(i + offset) % foci.length]
         const bp = scheme(FOCUS[focus].pattern, part === 'abs' || part === 'cardio' ? Math.max(2, slotPriority(part, i)) : slotPriority(part, i), 0, input)
-        slots.push({ ...bp, part, focus })
+        partSlots.push({ ...bp, part, focus })
       }
+      // תרגילים מורכבים (לחיצות) לפני בידוד (פרפר), בתוך אותו אזור
+      partSlots.sort((a, b) => Number(ISOLATION.includes(a.pattern)) - Number(ISOLATION.includes(b.pattern)))
+      slots.push(...partSlots)
       seen[part] = (seen[part] ?? 0) + count
     }
     const already = new Set(d.parts.filter((p) => p.count > 0).map((p) => p.part))

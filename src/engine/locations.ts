@@ -23,6 +23,14 @@ export const LOCATION_PRESETS: LocationPreset[] = [
   { key: 'outside', name: 'בחוץ', icon: 'outside', subtitle: 'משקל גוף בלבד', equipment: [] },
 ]
 
+/** הופך מיקום קיים לציוד של מיקום מוכן, בלי לאבד את ההיסטוריה וההחלפות שלו */
+export function applyPreset(l: LocationProfile, p: LocationPreset) {
+  l.equipment = [...p.equipment]
+  l.icon = p.icon
+  if (p.limits) l.limits = { ...p.limits }
+  else delete l.limits
+}
+
 export function locationFromPreset(p: LocationPreset, sortOrder: number): LocationProfile {
   return {
     id: uid(), name: p.name, icon: p.icon, equipment: [...p.equipment], sortOrder,

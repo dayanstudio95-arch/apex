@@ -46,6 +46,7 @@ export const STATION_OF: Record<string, Equipment> = {
   // מכונות
   'Machine_Bench_Press': 'chestPress', 'Butterfly': 'pecDeck', 'Leg_Extensions': 'legExtension',
   'Single-Leg_Leg_Extension': 'legExtension', 'Standing_Leg_Curl': 'legCurl', 'Jogging_Treadmill': 'treadmill',
+  'Machine_Preacher_Curls': 'preacherPad',
 }
 
 export const isAvailable = (e: Exercise, available: Set<Equipment>) =>

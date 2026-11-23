@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { CircleCheck, Dumbbell, Info, Star, Timer, TriangleAlert } from 'lucide-react'
-import type { BodyArea, BodyPart, Equipment, MovementPattern } from '../engine/types'
+import type { BodyArea, BodyPart, Equipment, LocationProfile, MovementPattern } from '../engine/types'
 import { BODY_PARTS, PATTERNS, equipmentHe, muscleHe, partHe, partOfPattern } from '../engine/types'
 import type { Exercise } from '../engine/catalog'
 import { STATION_OF, catalog, isAvailable, isSafe, partOf } from '../engine/catalog'
 import { isFavorite, toggleFavorite } from '../engine/prefs'
+import { LOCATION_PRESETS, applyPreset } from '../engine/locations'
 import { commit, getData, useData } from '../store'
 import { Chip, ExerciseImage, ExerciseThumb, Sheet, SheetHeader, StatTile, Tag, Toggle } from '../ui/kit'
 
@@ -32,6 +33,22 @@ export function FavStar({ id, size = 36 }: { id: string; size?: number }) {
             onClick={(ev) => { ev.stopPropagation(); toggleFavorite(getData(), id); commit() }}>
       <Star size={size * 0.46} color={on ? 'var(--lime)' : 'var(--text3)'} fill={on ? 'var(--lime)' : 'none'} />
     </button>
+  )
+}
+
+/** מיקום בלי ציוד מקבל רק שכיבות סמיכה וכדומה. מציעים לתקן בלחיצה */
+export function NoEquipmentHint({ location, onSettings }: { location?: LocationProfile; onSettings: () => void }) {
+  if (!location || location.equipment.length) return null
+  const preset = LOCATION_PRESETS[0]
+  return (
+    <div className="card" style={{ borderColor: 'rgba(255,176,32,.5)', gap: 10 }}>
+      <b className="row" style={{ gap: 8, color: 'var(--warning)' }}><TriangleAlert size={18} style={{ flex: 'none' }} /> ל״{location.name}״ עוד לא הוגדר ציוד</b>
+      <span className="muted" style={{ fontSize: 14 }}>בלי ציוד המאמן מציע רק תרגילי משקל גוף, כמו שכיבות סמיכה. מה יש שם?</span>
+      <button className="btn primary small" onClick={() => { applyPreset(location, preset); commit(true) }}>
+        חדר הכושר בבניין: משקולות עד 24, מוט W, ספסלים ומולטי טריינר
+      </button>
+      <button className="btn secondary small" onClick={onSettings}>בחירת ציוד ידנית</button>
+    </div>
   )
 }
 

@@ -90,7 +90,20 @@ export class SessionBuilder {
       const e = this.catalog.exercise(slot.mappedExerciseID)
       if (e && isAvailable(e, equipment) && isSafe(e, limitations)) take(i, e)
     })
-    for (const stage of [0, 1, 2, 3] as const) {
+    // מועדף הולך למשבצת שהוא הכי מתאים לה (למשל לחיצה במכונה → "לחיצת חזה נוספת", ולא במקום הלחיצה עם משקולות)
+    const fav = this.opts.favorites ?? new Set<string>()
+    const matches: { i: number; e: Exercise; rank: number }[] = []
+    slots.forEach((slot, i) => {
+      if (chosen[i]) return
+      const cands = this.catalog.candidates(slot.pattern, equipment, limitations)
+      focusPrefer(slot.focus).forEach((id, rank) => {
+        const e = fav.has(id) ? cands.find((c) => c.id === id) : undefined
+        if (e) matches.push({ i, e, rank })
+      })
+    })
+    matches.sort((x, y) => x.rank - y.rank || x.i - y.i)
+    for (const m of matches) if (!chosen[m.i] && !used.has(m.e.id)) take(m.i, m.e)
+    for (const stage of [1, 2, 3] as const) {
       slots.forEach((slot, i) => { if (!chosen[i]) take(i, this.pick(slot, equipment, limitations, used, stage)) })
     }
     const planned: PlannedExercise[] = []
@@ -107,14 +120,13 @@ export class SessionBuilder {
   }
 
   private pick(slot: SlotInput, equipment: Set<Equipment>, limitations: Set<BodyArea>, used: Set<string>,
-               stage: 0 | 1 | 2 | 3): Exercise | undefined {
+               stage: 1 | 2 | 3): Exercise | undefined {
     const cands = this.catalog.candidates(slot.pattern, equipment, limitations).filter((e) => !used.has(e.id))
     if (!cands.length) return undefined
     const fav = this.opts.favorites ?? new Set<string>()
     const prefer = focusPrefer(slot.focus)
     const byID = (id: string) => cands.find((e) => e.id === id)
     switch (stage) {
-      case 0: return prefer.filter((id) => fav.has(id)).map(byID).find(Boolean)
       case 1: return cands.find((e) => fav.has(e.id))
       case 2: return prefer.map(byID).find(Boolean)
       case 3: return cands[Math.min(slot.variant, cands.length - 1)]

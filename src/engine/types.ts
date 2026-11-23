@@ -6,7 +6,7 @@ export type Equipment =
   | 'barbell' | 'dumbbell' | 'kettlebell' | 'cable' | 'machine'
   | 'bench' | 'pullupBar' | 'bands' | 'ezBar' | 'rack'
   // תחנות של מולטי טריינר ביתי (במקום "כבלים" ו"מכונות" של חדר כושר מלא)
-  | 'highPulley' | 'lowPulley' | 'chestPress' | 'pecDeck' | 'legExtension' | 'legCurl' | 'treadmill'
+  | 'highPulley' | 'lowPulley' | 'chestPress' | 'pecDeck' | 'legExtension' | 'legCurl' | 'preacherPad' | 'treadmill'
 export type MovementPattern =
   | 'horizontalPush' | 'verticalPush' | 'horizontalPull' | 'verticalPull'
   | 'squat' | 'hinge' | 'lunge'
@@ -30,8 +30,8 @@ export const EQUIPMENT: Equipment[] = ['barbell', 'dumbbell', 'kettlebell', 'cab
 /** ציוד חופשי ומכונות של חדר כושר מלא */
 export const BASIC_EQUIPMENT: Equipment[] = ['dumbbell', 'ezBar', 'barbell', 'bench', 'bands', 'pullupBar', 'kettlebell', 'rack', 'cable', 'machine']
 /** התחנות של מולטי טריינר ביתי */
-export const STATIONS: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl', 'treadmill']
-export const MULTI_TRAINER: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl']
+export const STATIONS: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl', 'preacherPad', 'treadmill']
+export const MULTI_TRAINER: Equipment[] = ['highPulley', 'lowPulley', 'chestPress', 'pecDeck', 'legExtension', 'legCurl', 'preacherPad']
 export const PATTERNS: MovementPattern[] = [
   'horizontalPush', 'verticalPush', 'horizontalPull', 'verticalPull', 'squat', 'hinge', 'lunge',
   'quadIsolation', 'hamstringIsolation', 'chestIsolation', 'lateralDelt', 'rearDelt', 'biceps',
@@ -62,7 +62,7 @@ export const equipmentHe: Record<Equipment, string> = {
   barbell: 'מוט ישר', dumbbell: 'משקולות יד', kettlebell: 'קטלבל', cable: 'מכונת כבלים מלאה', machine: 'מכונות של חדר כושר',
   bench: 'ספסל מתכוונן', pullupBar: 'מתקן מתח', bands: 'גומיות', ezBar: 'מוט W', rack: 'מתקן סקוואט / מקבילים',
   highPulley: 'פולי עליון', lowPulley: 'פולי תחתון (חתירה)', chestPress: 'לחיצת חזה במכונה', pecDeck: 'פרפר במכונה',
-  legExtension: 'פשיטת ברכיים', legCurl: 'כפיפת ברכיים', treadmill: 'הליכון',
+  legExtension: 'פשיטת ברכיים', legCurl: 'כפיפת ברכיים', preacherPad: 'כיסא כומר', treadmill: 'הליכון',
 }
 export const patternHe: Record<MovementPattern, string> = {
   horizontalPush: 'דחיקה אופקית', verticalPush: 'דחיקה אנכית', horizontalPull: 'משיכה אופקית',

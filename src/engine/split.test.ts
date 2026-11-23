@@ -8,7 +8,7 @@ import { SessionBuilder, slotInput, startSession } from './session'
 import type { SlotInput } from './session'
 import { defaultDesign, FOCUS, generateFromDesign } from './split'
 import { materializeProgram } from './program'
-import { LOCATION_PRESETS, locationFromPreset } from './locations'
+import { LOCATION_PRESETS, applyPreset, locationFromPreset } from './locations'
 import { restBetweenSets, saveSetRest } from './prefs'
 import type { Profile, WorkoutTemplate } from './types'
 import { EQUIPMENT } from './types'
@@ -51,6 +51,14 @@ describe('Building gym (multi-trainer) equipment', () => {
     expect(ok('Barbell_Bench_Press_-_Medium_Grip')).toBe(false)
     expect(isAvailable(cat.exercise('Cable_Crossover')!, new Set(EQUIPMENT))).toBe(true)
   })
+  it('an empty location can become the building gym without losing its id', () => {
+    const l = { id: 'x', name: 'בניין', icon: 'pin', equipment: [], sortOrder: 0 }
+    applyPreset(l, LOCATION_PRESETS[0])
+    expect(l.id).toBe('x')
+    expect(l.name).toBe('בניין')
+    expect(isAvailable(cat.exercise('Machine_Preacher_Curls')!, new Set(l.equipment))).toBe(true)
+    expect(l).toMatchObject({ limits: { dumbbellMax: 24, stackStep: 6, stackMax: 76 } })
+  })
   it('machine stack moves in 6 kg plates up to 76, dumbbells cap at 24', () => {
     expect(loadRule(cat.exercise('Seated_Cable_Rows')!, building.limits)).toEqual({ step: 6, max: 76 })
     expect(loadRule(cat.exercise('Dumbbell_Bench_Press')!, building.limits)).toEqual({ step: 2, max: 24 })
@@ -68,25 +76,33 @@ describe('Split builder', () => {
     const bp = generateFromDesign(defaultDesign('ab'), input)
     expect(bp.templates.map((t) => t.name)).toEqual(['A · חזה, כתפיים, יד אחורית', 'B · גב, יד קדמית, רגליים'])
     const parts = (i: number) => bp.templates[i].slots.map((s) => s.part)
-    expect(parts(0)).toEqual(['chest', 'chest', 'chest', 'shoulders', 'shoulders', 'triceps', 'triceps', 'abs'])
-    expect(parts(1)).toEqual(['back', 'back', 'back', 'biceps', 'biceps', 'legs', 'abs'])
+    expect(parts(0)).toEqual(['chest', 'chest', 'chest', 'chest', 'shoulders', 'shoulders', 'triceps', 'triceps', 'abs'])
+    expect(parts(1)).toEqual(['back', 'back', 'back', 'back', 'biceps', 'biceps', 'legs', 'abs'])
     expect(bp.templates[0].slots.at(-1)).toMatchObject({ flex: true, priority: 3 })
   })
   it('picks sensible exercises for the building gym', () => {
     const p = materializeProgram(generateFromDesign(defaultDesign('ab'), input))
+    // חזה: משקולות (רגיל ועליון), לחיצה במכונה ופרפר בסוף
     expect(names(p.templates[0])).toEqual([
-      'Dumbbell_Bench_Press', 'Incline_Dumbbell_Press', 'Butterfly', 'Seated_Dumbbell_Press', 'Side_Lateral_Raise',
+      'Dumbbell_Bench_Press', 'Incline_Dumbbell_Press', 'Machine_Bench_Press', 'Butterfly', 'Seated_Dumbbell_Press', 'Side_Lateral_Raise',
       'Triceps_Pushdown_-_Rope_Attachment', 'EZ-Bar_Skullcrusher', 'Cable_Crunch',
     ])
+    // גב: פולי עליון רחב, חתירה, פולי עליון צר, חתירה עם משקולת. יד קדמית: מוט W ומשקולות
     expect(names(p.templates[1])).toEqual([
-      'Wide-Grip_Lat_Pulldown', 'Seated_Cable_Rows', 'Close-Grip_Front_Lat_Pulldown', 'EZ-Bar_Curl', 'Hammer_Curls', 'Goblet_Squat', 'Decline_Reverse_Crunch',
+      'Wide-Grip_Lat_Pulldown', 'Seated_Cable_Rows', 'Close-Grip_Front_Lat_Pulldown', 'One-Arm_Dumbbell_Row',
+      'EZ-Bar_Curl', 'Hammer_Curls', 'Goblet_Squat', 'Decline_Reverse_Crunch',
     ])
   })
   it('favorites are chosen first, in the slot that suits them', () => {
     const p = materializeProgram(generateFromDesign(defaultDesign('ab'), input))
     const a = names(p.templates[0], ['Machine_Bench_Press', 'Decline_Crunch'])
-    expect(a.slice(0, 3)).toEqual(['Machine_Bench_Press', 'Incline_Dumbbell_Press', 'Butterfly'])
+    // הלחיצה במכונה מועדפת: נשארת במקום "לחיצה נוספת", והלחיצה עם משקולות נשארת ראשונה
+    expect(a.slice(0, 4)).toEqual(['Dumbbell_Bench_Press', 'Incline_Dumbbell_Press', 'Machine_Bench_Press', 'Butterfly'])
     expect(a.at(-1)).toBe('Decline_Crunch')
+    // פרפר עם משקולות מועדף: מחליף את הפרפר במכונה
+    expect(names(p.templates[0], ['Dumbbell_Flyes']).slice(0, 4)).toEqual(['Dumbbell_Bench_Press', 'Incline_Dumbbell_Press', 'Machine_Bench_Press', 'Dumbbell_Flyes'])
+    // מועדף בלי מקום ברשימה המומלצת עדיין נבחר לתנועה שלו
+    expect(names(p.templates[0], ['Arnold_Dumbbell_Press'])[4]).toBe('Arnold_Dumbbell_Press')
   })
   it('flexible abs are the first thing dropped when time is short', () => {
     const p = materializeProgram(generateFromDesign(defaultDesign('ab'), input))

@@ -14,7 +14,7 @@ import { fmtKg, ltr } from '../engine/format'
 import { hasFlex, makeBuilder, templateSlots } from '../planning'
 import { Chip, ExerciseThumb, Sheet, SheetHeader, Tag } from '../ui/kit'
 import { locationIcon } from '../ui/icons'
-import { ExercisePicker, FavStar } from './Pickers'
+import { ExercisePicker, FavStar, NoEquipmentHint } from './Pickers'
 
 /** כותרת אזור לפני כל קבוצת תרגילים רצופה מאותו אזור */
 export function partOfPlanned(p: PlannedExercise): BodyPart {
@@ -35,7 +35,7 @@ export default function PreWorkout() {
 
   const template = program?.templates.find((t) => t.id === templateID) ?? (program ? nextTemplate(program) : undefined)
   const location = data.locations.find((l) => l.id === locationID) ?? data.locations[0]
-  const equipment = useMemo(() => new Set(location?.equipment ?? []), [location])
+  const equipment = useMemo(() => new Set(location?.equipment ?? []), [location?.equipment]) // eslint-disable-line react-hooks/exhaustive-deps
   const limitations = useMemo(() => new Set(profile.limitations), [profile.limitations])
   const deload = isDeloadWeek(program)
 
@@ -97,6 +97,7 @@ export default function PreWorkout() {
           </div>
         </section>
       )}
+      <NoEquipmentHint location={location} onSettings={() => { nav.closePreWorkout(); nav.tab('profile'); nav.push({ name: 'locations' }) }} />
       {deload && (
         <div className="row" style={{ padding: 14, borderRadius: 14, background: 'rgba(255,176,32,.12)', color: 'var(--warning)', fontSize: 14, fontWeight: 600, alignItems: 'flex-start' }}>
           <Leaf size={16} style={{ flex: 'none', marginTop: 2 }} /> שבוע דילואד: פחות סטים ו־10% פחות משקל. ההתאוששות היא חלק מהתוכנית.

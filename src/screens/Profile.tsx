@@ -8,7 +8,7 @@ import { activeProgram, streakEntries, totalXPOf } from '../engine/finisher'
 import { generateProgram, materializeProgram, nextTemplate, scheme } from '../engine/program'
 import { dayName, defaultDesign, focusLabel, generateFromDesign, kindHe, kindSub, maxPerPart } from '../engine/split'
 import { favoritesOf, restSettings, toggleFavorite, updateRest } from '../engine/prefs'
-import { LOCATION_PRESETS, locationFromPreset } from '../engine/locations'
+import { LOCATION_PRESETS, applyPreset, locationFromPreset } from '../engine/locations'
 import { makeBuilder, templateSlots } from '../planning'
 import { ACHIEVEMENTS, categoryHe, computeStreak, levelInfo, levelProgress, levelTitle, TIERS } from '../engine/motivation'
 import type { AchievementCategory } from '../engine/motivation'
@@ -18,7 +18,7 @@ import { nav } from '../uiState'
 import { backupFileName, downloadBlob, exportBackup, importBackup, remindersICS, shareOrDownload } from '../backup'
 import { Chip, ChevronBack, ChevronForward, Confirm, Empty, ExerciseThumb, LevelBadge, NumberField, Ring, SecondsStepper, Seg, SelectCard, Sheet, SheetHeader, StatTile, Tag, Toggle, WeekdayPicker } from '../ui/kit'
 import { achievementIcon, locationIcon } from '../ui/icons'
-import { equipmentCaption, ExercisePicker, FavStar } from './Pickers'
+import { equipmentCaption, ExercisePicker, FavStar, NoEquipmentHint } from './Pickers'
 
 function Header({ title }: { title: string }) {
   return (
@@ -154,7 +154,7 @@ export function ProgramEditor({ openBuilder }: { openBuilder?: boolean }) {
   const [swap, setSwap] = useState<{ slot: TemplateSlot; current?: Exercise } | null>(null)
   const [addTo, setAddTo] = useState<WorkoutTemplate | null>(null)
   const [build, setBuild] = useState(!!openBuilder || !program)
-  const equipment = useMemo(() => new Set(location?.equipment ?? []), [location])
+  const equipment = useMemo(() => new Set(location?.equipment ?? []), [location?.equipment]) // eslint-disable-line react-hooks/exhaustive-deps
   const limitations = new Set(profile.limitations)
 
   const addSlot = (t: WorkoutTemplate, e: Exercise) => {
@@ -185,6 +185,7 @@ export function ProgramEditor({ openBuilder }: { openBuilder?: boolean }) {
           {program.deloadWeekStart && <span className="caption" style={{ color: 'var(--warning)' }}>דילואד מתוכנן לשבוע של {fmtDayMonth(program.deloadWeekStart)}</span>}
         </div>
         <button className="btn secondary" onClick={() => setBuild(true)}><Sparkles size={18} /> בניית תוכנית לפי אזורי גוף</button>
+        <NoEquipmentHint location={location} onSettings={() => nav.push({ name: 'locations' })} />
         {data.locations.length > 1 && (
           <div className="col" style={{ gap: 8 }}>
             <span className="caption">התרגילים במיקום:</span>
@@ -367,6 +368,8 @@ function ProgramBuilder({ onClose }: { onClose: () => void }) {
       <SelectCard title="המאמן יחליט" subtitle="פיצול לפי מספר האימונים בשבוע (גוף מלא, עליון/תחתון או דחיקה/משיכה/רגליים)" icon={icons.coach} on={mode === 'coach'} onClick={() => choose('coach')} />
 
       {mode !== 'coach' && <>
+        <button className="link-btn" style={{ alignSelf: 'flex-start', fontSize: 14 }}
+                onClick={() => setDesign(defaultDesign(mode, new Set(goals)))}>איפוס לתוכנית המומלצת של {kindHe[mode]}</button>
         {design.days.map((d, di) => (
           <div key={di} className="card">
             <div className="row">
@@ -434,7 +437,18 @@ export function LocationsSettings() {
         const lim = (patch: Partial<NonNullable<typeof l.limits>>) => { l.limits = { ...(l.limits ?? {}), ...patch }; commit() }
         return (
           <div key={l.id} className="card">
-            <div className="row"><Icon size={18} /><b className="headline grow">{l.name}</b><button onClick={() => setDel(l.id)} aria-label="מחיקה"><Trash size={18} color="var(--danger)" /></button></div>
+            <div className="row">
+              <Icon size={18} style={{ flex: 'none' }} />
+              <input className="text-input grow" style={{ fontSize: 17, fontWeight: 700, padding: '8px 10px' }} value={l.name} aria-label="שם המיקום"
+                     onChange={(e) => { l.name = e.target.value; commit() }} />
+              <button onClick={() => setDel(l.id)} aria-label="מחיקה"><Trash size={18} color="var(--danger)" /></button>
+            </div>
+            <span className="caption">מילוי מהיר</span>
+            <div className="chips scroll">
+              {LOCATION_PRESETS.map((pr) => (
+                <Chip key={pr.key} title={pr.name} icon={locationIcon[pr.icon] ?? MapPin} on={false} onClick={() => { applyPreset(l, pr); commit() }} />
+              ))}
+            </div>
             <span className="caption">ציוד חופשי וחדר כושר מלא</span>
             <div className="chips">
               {BASIC_EQUIPMENT.map((e) => <Chip key={e} title={equipmentHe[e]} on={l.equipment.includes(e)} onClick={() => { l.equipment = tog(l.equipment, e); commit() }} />)}
